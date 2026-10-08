@@ -39,7 +39,7 @@ gpu = ThreadPoolExecutor(max_workers=1)
 jobs: dict[str, dict] = {}
 
 
-# First start: download (~15 GB), then load into the GPU. Shown in the UI while it happens.
+# First start: download (6–9 GB), then load into the GPU. Shown in the UI while it happens.
 model_state: dict = {"state": "ready" if DEFAULT_BACKEND == "preview" else "waiting"}
 
 
@@ -110,7 +110,9 @@ def _work(job_id: str, img: Image.Image, opts: Options) -> None:
         jobs[job_id]["status"] = "done"
     except Exception as e:  # surfaced to the UI
         log.exception("Job %s failed", job_id)
-        jobs[job_id].update(status="error", error={"code": "job_failed", "msg": str(e)})
+        code = "oom" if "out of memory" in str(e).lower() else "job_failed"
+        jobs[job_id].update(status="error", error={"code": code, "msg": str(e)[:300]})
+        backends.free_gpu()
     jobs[job_id]["finished"] = time.time()
 
 

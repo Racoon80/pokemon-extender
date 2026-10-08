@@ -1,11 +1,11 @@
 # Pokemon-Extender — Unraid, Compose Manager plugin
 #
-# Needs: "Nvidia Driver" plugin (Apps tab) and an NVIDIA GPU with 12 GB VRAM or more.
+# Needs: "Nvidia Driver" plugin (Apps tab) and an NVIDIA GPU with 6 GB VRAM or more.
 # Docker → Compose → Add New Stack → "Pokemon-Extender" → Edit Stack → Compose File:
 # paste this file, put your Hugging Face token in (HF_TOKEN), save, then "Compose Up".
 # Update later: "Update Stack" (the AI model in appdata is kept).
 # Docker builds the image straight from GitHub; nothing to clone or copy.
-# The first start downloads the AI model (~15 GB) into appdata; the web page shows the progress.
+# The first start downloads the AI model (6–9 GB) into appdata; the web page shows the progress.
 services:
   pokemon-extender:
     build:
@@ -26,13 +26,13 @@ services:
       # Which GPU: "all", or the GPU UUID from the Nvidia Driver plugin page if you have several.
       NVIDIA_VISIBLE_DEVICES: all
       NVIDIA_DRIVER_CAPABILITIES: compute,utility
-      # 12 GB VRAM: Q5_K_S (8.3 GB) fits. Out of memory → flux1-fill-dev-Q4_K_S.gguf (6.8 GB).
-      FLUX_GGUF_FILE: flux1-fill-dev-Q5_K_S.gguf
+      # auto: picks the AI model size for your GPU (8 GB cards work too, a bit slower and softer).
+      FLUX_GGUF_FILE: auto
       TORCH_DTYPE: auto                # bf16 on RTX 30xx and newer, float32 on older cards
-      CPU_OFFLOAD: auto                # switches on below 12 GB free VRAM
+      CPU_OFFLOAD: auto                # moves parts of the model to RAM when the GPU is too small
       TZ: Europe/Luxembourg
     volumes:
-      # AI model (~15 GB), results, own templates (templates/*.json)
+      # AI model (6–9 GB), results, own templates (templates/*.json)
       - /mnt/user/appdata/pokemon-extender:/data
     shm_size: 2gb
     labels:

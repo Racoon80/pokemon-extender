@@ -1,11 +1,11 @@
-# Pokemon-Extender — for an NVIDIA GPU with 12 GB VRAM or more
+# Pokemon-Extender — for an NVIDIA GPU with 6 GB VRAM or more
 # (Unraid with the Compose Manager plugin: use unraid/docker-compose.yml instead.)
 #
 # Needs: Docker + NVIDIA driver + nvidia-container-toolkit
 #   (Windows: Docker Desktop with the WSL2 backend, GPU support is built in)
 # 1. Put your Hugging Face token below (HF_TOKEN).
 # 2. docker compose up -d --build
-# 3. http://localhost:8000 — the first start downloads the AI model (~15 GB) once; the page shows the progress.
+# 3. http://localhost:8000 — the first start downloads the AI model (6–9 GB) once; the page shows the progress.
 services:
   pokemon-extender:
     build: .
@@ -21,10 +21,10 @@ services:
       # Hugging Face token (read access) of an account that accepted the FLUX.1 Fill licence:
       # https://huggingface.co/black-forest-labs/FLUX.1-Fill-dev
       HF_TOKEN: "hf_PUT_YOUR_TOKEN_HERE"
-      # 12 GB VRAM: Q5_K_S (8.3 GB) fits. Out of memory → flux1-fill-dev-Q4_K_S.gguf (6.8 GB).
-      FLUX_GGUF_FILE: flux1-fill-dev-Q5_K_S.gguf
+      # auto: picks the AI model size for your GPU (8 GB cards work too, a bit slower and softer).
+      FLUX_GGUF_FILE: auto
       TORCH_DTYPE: auto                # bf16 on RTX 30xx and newer, float32 on older cards
-      CPU_OFFLOAD: auto                # switches on below 12 GB free VRAM
+      CPU_OFFLOAD: auto                # moves parts of the model to RAM when the GPU is too small
     volumes:
       - ./data:/data                   # AI model, results, own templates (data/templates/*.json)
     shm_size: 2gb

@@ -12,13 +12,21 @@ switchable in the top corner), with a progress bar (stage, step, time left) and 
 uploaded image.
 
 ## Install
-Needs an NVIDIA GPU with **≥ 12 GB VRAM** and a free Hugging Face account: FLUX.1 Fill dev is
+Needs an NVIDIA GPU with **≥ 6 GB VRAM** and a free Hugging Face account: FLUX.1 Fill dev is
 *gated*, so accept its licence at
 [huggingface.co/black-forest-labs/FLUX.1-Fill-dev](https://huggingface.co/black-forest-labs/FLUX.1-Fill-dev)
 and create a token with read access. Everything is set in the compose file — no `.env` needed.
 
-The first start downloads the AI model (**~15 GB**: GGUF transformer 8.3 GB + T5 nf4 6.3 GB +
-CLIP/VAE) into the data volume; the web page shows the progress. After that the token and the
+The first start downloads the AI model into the data volume — **6–9 GB**, depending on the GPU —
+and the web page shows the progress. The size is chosen for the card (`FLUX_GGUF_FILE: auto`):
+
+| VRAM | Transformer | Working resolution | Offload | 12 steps (Quadro RTX 8000, fp32) |
+|---|---|---|---|---|
+| ≥ 11 GB | Q5_K_S, 8.3 GB | 1.6 MP | only if needed | ~2:50 |
+| 6–11 GB | Q3_K_S, 5.2 GB | 1.0 MP | block by block, ~3.3 GB peak | ~2:00 |
+
+Newer cards (RTX 30xx and up, bf16) are faster than these Turing figures. The T5 text encoder is
+not downloaded: the embeddings of the built-in prompt ship with the app. After that the token and the
 internet are no longer needed. After every start the model needs a few minutes to load into the GPU.
 
 ### Unraid (Compose Manager plugin)
@@ -54,8 +62,8 @@ AI model in appdata is kept.
    is repainted too, so the **illustration** continues rather than the card frame.
 4. Outpaint on the GPU with FLUX.1 Fill (`app/backends.py`, 12 steps). Only the card's
    illustration is shown to the model, at its exact place and size, so the scenery lines up with
-   the real card. The T5 text encoder is only loaded briefly and freed again, so it never shares
-   VRAM with the transformer.
+   the real card. The prompt is fixed; its T5 embeddings ship in `app/assets/`, so T5 is never
+   loaded (a custom prompt through the API downloads and loads it briefly).
 5. Scale to print resolution and paint the card and label areas white (+ `white_margin_mm`).
 
 ## Slab formats (`templates/*.json`)
@@ -76,16 +84,17 @@ file there wins over the built-in one with the same name. It is read for every j
 | Variable | |
 |---|---|
 | `HF_TOKEN` | Your Hugging Face token, only needed for the first download |
-| `FLUX_GGUF_FILE` | `flux1-fill-dev-Q5_K_S.gguf` (8.3 GB). Less VRAM → `…-Q4_K_S.gguf` (6.8 GB); better quality → `…-Q8_0.gguf` (12.7 GB, > 16 GB VRAM). Downloaded on the next start |
+| `FLUX_GGUF_FILE` | `auto` (by VRAM, see above), or a file from [YarvixPA/FLUX.1-Fill-dev-GGUF](https://huggingface.co/YarvixPA/FLUX.1-Fill-dev-GGUF), e.g. `flux1-fill-dev-Q8_0.gguf` (12.7 GB) for > 16 GB VRAM. Downloaded on the next start |
 | `TORCH_DTYPE` | `auto` = bf16 on Ampere (RTX 30xx) and newer, float32 on older cards (fp16 makes FLUX overflow into black images) |
-| `CPU_OFFLOAD` | `auto` switches on below 12 GB free VRAM |
+| `CPU_OFFLOAD` | `auto` (see the table above), or `1` / `sequential` / `0` |
+| `VRAM_LIMIT_GB` | Use at most this much VRAM (shared GPU, or to try a smaller card's settings) |
 | `MAX_UPLOAD_MB` / `MAX_PENDING` | Upload limit (25 MB) and max. jobs in the queue (5) |
 | `OUTPUT_TTL_HOURS` | Results are deleted after 72 h |
 
 ## Troubleshooting
 | Problem | Fix |
 |---|---|
-| `CUDA out of memory` | `FLUX_GGUF_FILE: flux1-fill-dev-Q4_K_S.gguf`, restart |
+| `CUDA out of memory` | `FLUX_GGUF_FILE: auto` (or a smaller file) and `CPU_OFFLOAD: auto`, restart |
 | Black image | `TORCH_DTYPE: float32` (fp16 overflows) |
 | Page shows *HF_TOKEN is missing* or `401` / `gated repo` | FLUX licence not accepted, or wrong token in the compose file |
 

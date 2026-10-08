@@ -4,6 +4,7 @@ from __future__ import annotations
 import logging
 import os
 import threading
+from pathlib import Path
 
 import cv2
 import numpy as np
@@ -69,12 +70,45 @@ def _torch_dtype():
     return torch.bfloat16 if torch.cuda.get_device_capability()[0] >= 8 else torch.float32
 
 
-def _place(pipe, vram_needed_gb: float):
+def _offload_blocks(pipe) -> None:
+    """For small cards: the transformer's 57 blocks stay in RAM and each one visits the GPU only
+    for its own forward pass; everything else stays on the GPU. accelerate's sequential offload
+    moves single weights and breaks GGUF-quantised layers, whole blocks keep them intact."""
     import torch
+    gpu, cpu = torch.device("cuda"), torch.device("cpu")
+
+    def to_gpu(module, args):
+        module.to(gpu)
+
+    def to_cpu(module, args, output):
+        module.to(cpu)
+
+    transformer = pipe.transformer
+    for name, child in transformer.named_children():
+        if name in ("transformer_blocks", "single_transformer_blocks"):
+            for block in child:
+                block.to(cpu)
+                block.register_forward_pre_hook(to_gpu)
+                block.register_forward_hook(to_cpu)
+        else:
+            child.to(gpu)
+    for name in ("vae", "text_encoder"):
+        getattr(pipe, name).to(gpu)
+
+
+def _place(pipe, vram_needed_gb: float):
+    """All on the GPU when it fits; else whole models move in and out (model offload). Cards under
+    11 GB (from 6 GB) move the transformer block by block: ~3.3 GB peak."""
+    import torch
+    from . import models
     offload = os.environ.get("CPU_OFFLOAD", "auto")
-    free_gb = torch.cuda.mem_get_info()[0] / 1024**3
-    if offload == "1" or (offload == "auto" and free_gb < vram_needed_gb):
-        log.info("CPU offload on (%.1f GB free, %.0f GB needed)", free_gb, vram_needed_gb)
+    total_gb = models.gpu_total_gb()
+    free_gb = min(torch.cuda.mem_get_info()[0] / 1024**3, total_gb)
+    if offload == "sequential" or (offload == "auto" and total_gb < 11):
+        log.info("Block-wise CPU offload (%.1f GB VRAM)", total_gb)
+        _offload_blocks(pipe)
+    elif offload == "1" or (offload == "auto" and free_gb < vram_needed_gb):
+        log.info("CPU offload on (%.1f GB free, %.1f GB needed)", free_gb, vram_needed_gb)
         pipe.enable_model_cpu_offload()
     else:
         pipe.to("cuda")
@@ -83,7 +117,7 @@ def _place(pipe, vram_needed_gb: float):
 
 
 class FluxFillBackend(Backend):
-    """FLUX.1 Fill [dev], quantised so it fits 12 GB VRAM (model files: app/models.py).
+    """FLUX.1 Fill [dev], quantised to fit cards from 6 GB VRAM (model files: app/models.py).
 
     Transformer: GGUF (Q5_K_S ≈ 8.3 GB). T5: nf4 (≈ 6.3 GB), loaded only while a new prompt
     is encoded and then dropped, so it never sits on the GPU next to the transformer.
@@ -102,16 +136,39 @@ class FluxFillBackend(Backend):
         self.torch = torch
         self._embeds: dict[str, tuple] = {}
 
+        vram = models.gpu_total_gb()
+        limit = float(os.environ.get("VRAM_LIMIT_GB", "0") or 0)
+        if limit > 0:
+            total = torch.cuda.get_device_properties(0).total_memory / 1024**3
+            torch.cuda.set_per_process_memory_fraction(min(1.0, limit / total))
+        # Cards under 11 GB paint at a lower working resolution; the print is scaled up anyway.
+        self.megapixels = float(os.environ.get("GEN_MEGAPIXELS", "0") or 0) or (1.6 if vram >= 11 else 1.0)
+
         base = models.base_dir()
-        log.info("Loading %s/%s (%s)", models.GGUF_REPO, models.GGUF_FILE, self.dtype)
+        log.info("Loading %s/%s (%s, %.1f GB VRAM, %.1f MP)",
+                 models.GGUF_REPO, models.gguf_file(), self.dtype, vram, self.megapixels)
+        gguf = models.gguf_path()
         transformer = FluxTransformer2DModel.from_single_file(
-            models.gguf_path(),
+            gguf,
             quantization_config=GGUFQuantizationConfig(compute_dtype=self.dtype),
             config=base, subfolder="transformer", torch_dtype=self.dtype)
         pipe = FluxFillPipeline.from_pretrained(base, transformer=transformer, text_encoder_2=None,
                                                 torch_dtype=self.dtype)
-        self.pipe = _place(pipe, 12)
-        self._encode(DEFAULT_PROMPT)
+        self.pipe = _place(pipe, os.path.getsize(gguf) / 1024**3 + 3.5)
+        self._load_shipped_embeds()
+
+    def _load_shipped_embeds(self) -> None:
+        """Embeddings of DEFAULT_PROMPT, computed once with T5, so T5 is never needed for it."""
+        from safetensors import safe_open
+        path = Path(__file__).parent / "assets" / "prompt_embeds.safetensors"
+        if not path.is_file():
+            return
+        with safe_open(str(path), framework="pt") as f:
+            if f.metadata().get("prompt") != DEFAULT_PROMPT:
+                log.warning("%s belongs to another prompt, ignoring it", path.name)
+                return
+            self._embeds[DEFAULT_PROMPT] = tuple(
+                f.get_tensor(k).to("cuda", self.dtype) for k in ("prompt_embeds", "pooled_prompt_embeds"))
 
     def _encode(self, prompt: str, progress=_no_progress) -> tuple:
         if prompt in self._embeds:
@@ -175,6 +232,11 @@ def get_backend(name: str) -> Backend:
                 _free_cuda()
             _loaded[name] = _REGISTRY[name]()
         return _loaded[name]
+
+
+def free_gpu() -> None:
+    """After an out-of-memory error: give back what the failed job held."""
+    _free_cuda()
 
 
 def _free_cuda():
