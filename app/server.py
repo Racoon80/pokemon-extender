@@ -103,7 +103,7 @@ async def extend(
     backend: str = Form(DEFAULT_BACKEND),
     prompt: str = Form(""),
     seed: int = Form(-1),
-    steps: int = Form(24),
+    steps: int = Form(12),
     inset_mm: float = Form(2.5),
     bleed_mm: float = Form(0.0),
     dpi: int = Form(300),

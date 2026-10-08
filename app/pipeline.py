@@ -25,7 +25,7 @@ class Options:
     backend: str = "flux"
     prompt: str = ""
     seed: int = -1
-    steps: int = 24
+    steps: int = 12
     context: str = "art"     # "art": the model only sees the illustration crop; "card": the whole card
     inset_mm: float = 2.5    # context="card": the card's own frame gets repainted
     bleed_mm: float = 0.0
