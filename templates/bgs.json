@@ -1,0 +1,10 @@
+{
+  "name": "BGS slab (Beckett)",
+  "note": "Outer size 84 x 131 mm = the most widely quoted BGS slab size (one source measured 83 x 130.75 mm over three slabs; Beckett publishes no official spec). Label and card positions are estimates - verify against a real slab.",
+  "width_mm": 84,
+  "height_mm": 131,
+  "corner_radius_mm": 3,
+  "card":  { "x_mm": 10.5, "y_mm": 31.0, "w_mm": 63, "h_mm": 88, "radius_mm": 3 },
+  "label": { "x_mm": 10.5, "y_mm": 6.0,  "w_mm": 63, "h_mm": 20, "radius_mm": 1 },
+  "white_margin_mm": 0.5
+}

@@ -12,3 +12,4 @@ numpy==1.26.4
 opencv-python-headless==4.10.0.84
 bitsandbytes==0.45.0
 gguf==0.10.0
+hf_transfer==0.1.8

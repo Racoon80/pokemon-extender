@@ -42,15 +42,18 @@ CLIP/VAE). Follow it with `docker logs -f pokemon-extender`.
    a new prompt and freed again, so it never shares VRAM with the transformer.
 5. Scale to print resolution and paint the card and label areas white (+ `white_margin_mm`).
 
-## Measurements (`templates/psa.json`)
-| | mm |
-|---|---|
-| Slab outer size | 81 × 136 (most widely quoted; PSA publishes no official spec) |
-| Label | 68 × 18.3, 5.6 from the top, centred |
-| Card | 63 × 88, 35.5 from the top, centred |
+## Slab formats (`templates/*.json`)
+Pick the format in the web UI (or `--template` on the CLI). All values in mm.
 
-Label and card positions were measured from a product photo — check them against a real
-slab. The JSON is re-read for every job, no rebuild needed.
+| Template | Outer size | Label | Card |
+|---|---|---|---|
+| `psa` — PSA | 81 × 136 | 68 × 18.3, 5.6 from the top | 63 × 88, 35.5 from the top |
+| `bgs` — Beckett | 84 × 131 | 63 × 20, 6 from the top | 63 × 88, 31 from the top |
+
+Outer sizes are the most widely quoted figures — neither PSA nor Beckett publishes an official
+spec. Label and card positions are measured from product photos (PSA) or estimated (BGS):
+check them against a real slab. The JSON files are re-read for every job, no rebuild needed;
+drop in another `*.json` to add a format.
 
 ## Settings (`docker-compose.yml`)
 | Variable | |
