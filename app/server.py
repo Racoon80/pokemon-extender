@@ -26,7 +26,8 @@ log = logging.getLogger("extender")
 OUT_DIR = Path(os.environ.get("OUTPUT_DIR", "/data/outputs"))
 DEFAULT_BACKEND = os.environ.get("DEFAULT_BACKEND", "flux")
 STATIC = Path(__file__).parent / "static"
-FILES = {"print.png", "print.pdf", "preview.jpg", "raw.png", "mask.png", "card.png", "meta.json"}
+FILES = {"print.png", "print.pdf", "preview.jpg", "raw.png", "mask.png", "card.png", "meta.json",
+         "cut.svg", "cut.dxf", "print-cut.svg"}
 MAX_UPLOAD_BYTES = int(os.environ.get("MAX_UPLOAD_MB", "25")) * 1024 * 1024
 MAX_PIXELS = 40_000_000          # a phone photo is ~12 MP; refuses decompression bombs before decoding
 MAX_PENDING = int(os.environ.get("MAX_PENDING", "5"))
@@ -59,10 +60,24 @@ def config():
     }
 
 
+def _progress_for(job: dict):
+    def progress(stage: str, step: int = 0, steps: int = 0) -> None:
+        now = time.time()
+        p = job["progress"]
+        if stage == "generating" and step == 0:
+            p["gen_started"] = now
+        p.update(stage=stage, step=step, steps=steps)
+        if stage == "generating" and step > 0 and p.get("gen_started"):
+            p["eta_s"] = round((now - p["gen_started"]) / step * (steps - step))
+    return progress
+
+
 def _work(job_id: str, img: Image.Image, opts: Options) -> None:
-    jobs[job_id]["status"] = "running"
+    job = jobs[job_id]
+    job["status"] = "running"
+    job["progress"] = {"stage": "preparing", "step": 0, "steps": 0}
     try:
-        jobs[job_id]["meta"] = run(img, opts, OUT_DIR / job_id)
+        job["meta"] = run(img, opts, OUT_DIR / job_id, _progress_for(job))
         jobs[job_id]["status"] = "done"
     except Exception as e:  # surfaced to the UI
         log.exception("Job %s failed", job_id)
@@ -88,7 +103,7 @@ async def extend(
     backend: str = Form(DEFAULT_BACKEND),
     prompt: str = Form(""),
     seed: int = Form(-1),
-    steps: int = Form(40),
+    steps: int = Form(24),
     inset_mm: float = Form(2.5),
     bleed_mm: float = Form(0.0),
     dpi: int = Form(300),
@@ -115,7 +130,7 @@ async def extend(
     opts = Options(template=template, backend=backend, prompt=prompt, seed=seed, steps=steps,
                    inset_mm=inset_mm, bleed_mm=bleed_mm, dpi=dpi, guides=guides)
     job_id = uuid.uuid4().hex[:12]
-    jobs[job_id] = {"status": "queued"}
+    jobs[job_id] = {"status": "queued", "created": time.time()}
     gpu.submit(_work, job_id, img, opts)
     return {"id": job_id}
 
@@ -124,7 +139,11 @@ async def extend(
 def job(job_id: str):
     if job_id not in jobs:
         raise HTTPException(404)
-    return jobs[job_id]
+    job = jobs[job_id]
+    if job["status"] == "queued":
+        ahead = sum(1 for j in jobs.values() if j["status"] in ("queued", "running") and j["created"] < job["created"])
+        return {**job, "position": ahead}
+    return job
 
 
 @app.get("/api/jobs/{job_id}/{name}")

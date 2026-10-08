@@ -10,7 +10,8 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
-from .backends import DEFAULT_PROMPT, get_backend
+from . import cutfile
+from .backends import DEFAULT_PROMPT, get_backend, is_loaded
 from .card import prepare_card
 from .layout import Layout, Rect, load_layout
 
@@ -24,7 +25,7 @@ class Options:
     backend: str = "flux"
     prompt: str = ""
     seed: int = -1
-    steps: int = 40
+    steps: int = 24
     context: str = "art"     # "art": the model only sees the illustration crop; "card": the whole card
     inset_mm: float = 2.5    # context="card": the card's own frame gets repainted
     bleed_mm: float = 0.0
@@ -89,22 +90,31 @@ def _font(size: int):
     return ImageFont.load_default()
 
 
-def run(card_img: Image.Image, opts: Options, out_dir: Path) -> dict:
+def _no_progress(stage: str, step: int = 0, steps: int = 0) -> None:
+    pass
+
+
+def run(card_img: Image.Image, opts: Options, out_dir: Path, progress=_no_progress) -> dict:
+    """progress(stage, step, steps): preparing, loading, encoding, generating, finishing."""
     out_dir.mkdir(parents=True, exist_ok=True)
     layout = load_layout(opts.template).with_bleed(opts.bleed_mm)
     seed = opts.seed if opts.seed >= 0 else int(time.time() * 1000) % 2**31
     prompt = opts.prompt.strip() or DEFAULT_PROMPT
 
+    progress("preparing")
     card = prepare_card(card_img, opts.detect_card)
     card.save(out_dir / "card.png")
 
+    if not is_loaded(opts.backend):
+        progress("loading")
     backend = get_backend(opts.backend)
     init, mask, _ = _gen_canvas(layout, card, opts, backend.multiple, backend.megapixels)
     mask.save(out_dir / "mask.png")
     t0 = time.time()
     log.info("%s: %dx%d, seed %d, %d steps", backend.name, *init.size, seed, opts.steps)
-    raw = backend.generate(init, mask, prompt, seed, opts.steps)
+    raw = backend.generate(init, mask, prompt, seed, opts.steps, progress)
     gen_seconds = round(time.time() - t0, 1)
+    progress("finishing")
     raw.save(out_dir / "raw.png")
 
     # Print resolution
@@ -122,6 +132,7 @@ def run(card_img: Image.Image, opts: Options, out_dir: Path) -> dict:
                  width=max(1, round(0.1 * px_per_mm)))
     sheet.save(out_dir / "print.png", dpi=(opts.dpi, opts.dpi))
     sheet.save(out_dir / "print.pdf", resolution=opts.dpi)
+    cutfile.write_all(layout, out_dir)
 
     # Preview: how it looks in the case with the card and a label in place.
     preview = art.copy()

@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Pokemon Extender</title>
 <style>
-  :root { --bg:#f4f4f6; --panel:#fff; --text:#1d1d22; --muted:#6b6b76; --line:#dcdce2; --accent:#d22a33; }
-  @media (prefers-color-scheme: dark) { :root { --bg:#141417; --panel:#1e1e23; --text:#ececf0; --muted:#9a9aa6; --line:#33333b; } }
+  :root { --bg:#f4f4f6; --panel:#fff; --text:#1d1d22; --muted:#6b6b76; --line:#dcdce2; --accent:#d22a33; --track:#e6e6ec; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#141417; --panel:#1e1e23; --text:#ececf0; --muted:#9a9aa6; --line:#33333b; --track:#2c2c33; } }
   * { box-sizing:border-box; }
   body { margin:0; background:var(--bg); color:var(--text); font:15px/1.45 system-ui, sans-serif; }
   main { max-width:1100px; margin:0 auto; padding:24px 16px; display:grid; gap:20px; grid-template-columns:340px 1fr; }
@@ -21,12 +21,20 @@
   .check input { width:auto; }
   button { margin-top:16px; width:100%; padding:11px; border:0; border-radius:8px; background:var(--accent); color:#fff; font-weight:600; font-size:15px; cursor:pointer; }
   button:disabled { opacity:.5; cursor:wait; }
-  #status { margin-top:10px; font-size:14px; color:var(--muted); min-height:1.4em; }
-  .results { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
-  .results figure { margin:0; } .results img { width:100%; border-radius:8px; border:1px solid var(--line); background:#fff; }
+  #thumb { display:none; margin-top:10px; max-height:180px; max-width:100%; border-radius:6px; border:1px solid var(--line); }
+  .progress { margin-top:14px; height:8px; border-radius:4px; background:var(--track); overflow:hidden; visibility:hidden; }
+  .progress.on { visibility:visible; }
+  .progress .bar { height:100%; width:0; background:var(--accent); transition:width .6s ease; }
+  .progress.err .bar { background:#888; }
+  #status { margin-top:8px; font-size:14px; color:var(--muted); min-height:1.4em; display:flex; justify-content:space-between; gap:8px; }
+  .results { display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:16px; }
+  .results figure { margin:0; } .results img { width:100%; max-height:520px; object-fit:contain; border-radius:8px; border:1px solid var(--line); background:#fff; }
+  .results.single { grid-template-columns:minmax(180px, 320px); }
   figcaption { font-size:13px; color:var(--muted); margin-top:4px; }
   .dl { display:flex; flex-wrap:wrap; gap:8px; margin-top:14px; }
   .dl a { padding:6px 10px; border:1px solid var(--line); border-radius:6px; color:var(--text); text-decoration:none; font-size:13px; }
+  .dl a.cut { border-color:var(--accent); }
+  .hint { font-size:13px; color:var(--muted); margin:10px 0 0; }
   .empty { color:var(--muted); text-align:center; padding:60px 10px; }
   .top { display:flex; justify-content:space-between; align-items:start; gap:12px; }
   .top select { width:auto; padding:4px 6px; font-size:13px; }
@@ -45,7 +53,8 @@
     <p class="sub" data-i18n="subtitle"></p>
     <form class="panel" id="f">
       <label data-i18n="card"></label>
-      <input type="file" name="file" accept="image/*" required>
+      <input type="file" name="file" id="file" accept="image/*" required>
+      <img id="thumb" alt="">
       <div class="row">
         <div><label data-i18n="template"></label><select name="template" id="template"></select></div>
         <div><label data-i18n="model"></label><select name="backend" id="backend"></select></div>
@@ -54,7 +63,7 @@
       <textarea name="prompt" id="prompt"></textarea>
       <div class="row">
         <div><label data-i18n="seed"></label><input name="seed" type="number" value="-1" min="-1"></div>
-        <div><label data-i18n="steps"></label><input name="steps" type="number" value="40" min="1" max="100"></div>
+        <div><label data-i18n="steps"></label><input name="steps" type="number" value="24" min="1" max="100"></div>
       </div>
       <div class="row">
         <div><label data-i18n="inset"></label><input name="inset_mm" type="number" value="2.5" step="0.5" min="0" max="10"></div>
@@ -65,7 +74,8 @@
         <div><label class="check"><input type="checkbox" name="guides" value="true"> <span data-i18n="guides"></span></label></div>
       </div>
       <button id="go" data-i18n="go"></button>
-      <div id="status"></div>
+      <div class="progress" id="progress"><div class="bar"></div></div>
+      <div id="status"><span id="stage"></span><span id="eta"></span></div>
     </form>
   </section>
   <section class="panel" id="out"><div class="empty" data-i18n="empty"></div></section>
@@ -77,11 +87,15 @@ const I18N = {
     card: 'Card (scan or photo)', template: 'Template', model: 'Model',
     prompt: 'Prompt (empty = default)', seed: 'Seed (-1 = random)', steps: 'Steps',
     inset: 'Repaint card border (mm)', bleed: 'Bleed (mm)', guides: 'Cut line',
-    go: 'Extend', empty: 'Nothing generated yet.',
-    uploading: 'Uploading…', queued: 'Waiting in queue', running: 'Generating',
-    done: 'Done ({s}s, seed {seed})', error: 'Error: ',
+    go: 'Extend', empty: 'Nothing generated yet.', uploaded: 'Uploaded image',
+    uploading: 'Uploading…', s_queued: 'Waiting in queue ({n} ahead)', s_queued0: 'Next in queue',
+    s_preparing: 'Preparing card…', s_loading: 'Loading AI model (first job only, a few minutes)…',
+    s_encoding: 'Reading the prompt…', s_generating: 'Painting · step {step} of {steps}', s_finishing: 'Saving print files…',
+    eta: '~{t} left', done: 'Done ({s}s, seed {seed})', error: 'Error: ',
     print: 'Print ({w} × {h} mm, {dpi} dpi)', preview: 'Preview with card + label',
     dlPdf: 'PDF (print)', dlPng: 'PNG (print)', dlPreview: 'Preview', dlRaw: 'Raw image', dlMask: 'Mask',
+    dlCutDxf: 'Cut line DXF', dlCutSvg: 'Cut line SVG', dlPrintCut: 'Print + cut SVG',
+    cutHint: 'For print-then-cut (e.g. Bambu Suite): import the print image and the cut line (DXF keeps the exact size). Both share the same origin, top left. Tip: 2 mm bleed, so the blade never cuts into white paper.',
     e_not_image: 'That is not an image (or it is too large).', e_too_large: 'File too large (max. {max} MB).',
     e_out_of_range: 'A value is out of range.', e_unknown_option: 'Unknown template or model.',
     e_queue_full: 'Too many jobs in the queue, try again later.', e_job_failed: 'Generation failed: {msg}',
@@ -91,11 +105,15 @@ const I18N = {
     card: 'Karte (Scan oder Foto)', template: 'Vorlage', model: 'Modell',
     prompt: 'Prompt (leer = Standard)', seed: 'Seed (-1 = zufällig)', steps: 'Schritte',
     inset: 'Kartenrand übermalen (mm)', bleed: 'Beschnitt (mm)', guides: 'Schnittlinie',
-    go: 'Erweitern', empty: 'Noch nichts generiert.',
-    uploading: 'Hochladen…', queued: 'In der Warteschlange', running: 'Generiere',
-    done: 'Fertig ({s}s, Seed {seed})', error: 'Fehler: ',
+    go: 'Erweitern', empty: 'Noch nichts generiert.', uploaded: 'Hochgeladenes Bild',
+    uploading: 'Hochladen…', s_queued: 'In der Warteschlange ({n} davor)', s_queued0: 'Als Nächstes dran',
+    s_preparing: 'Karte wird vorbereitet…', s_loading: 'KI-Modell wird geladen (nur beim ersten Auftrag, einige Minuten)…',
+    s_encoding: 'Prompt wird gelesen…', s_generating: 'Malen · Schritt {step} von {steps}', s_finishing: 'Druckdateien werden gespeichert…',
+    eta: 'noch ~{t}', done: 'Fertig ({s}s, Seed {seed})', error: 'Fehler: ',
     print: 'Druck ({w} × {h} mm, {dpi} dpi)', preview: 'Vorschau mit Karte + Label',
     dlPdf: 'PDF (Druck)', dlPng: 'PNG (Druck)', dlPreview: 'Vorschau', dlRaw: 'Rohbild', dlMask: 'Maske',
+    dlCutDxf: 'Schnittlinie DXF', dlCutSvg: 'Schnittlinie SVG', dlPrintCut: 'Druck + Schnitt SVG',
+    cutHint: 'Für Drucken-und-Schneiden (z. B. Bambu Suite): Druckbild und Schnittlinie importieren (DXF behält die exakte Größe). Beide haben denselben Nullpunkt oben links. Tipp: 2 mm Beschnitt, damit das Messer nie ins weiße Papier schneidet.',
     e_not_image: 'Das ist kein Bild (oder es ist zu groß).', e_too_large: 'Datei zu groß (max. {max} MB).',
     e_out_of_range: 'Ein Wert liegt außerhalb des erlaubten Bereichs.', e_unknown_option: 'Unbekannte Vorlage oder unbekanntes Modell.',
     e_queue_full: 'Zu viele Aufträge in der Warteschlange, bitte später erneut versuchen.', e_job_failed: 'Generierung fehlgeschlagen: {msg}',
@@ -105,11 +123,15 @@ const I18N = {
     card: 'Carte (scan ou photo)', template: 'Modèle de format', model: 'Modèle IA',
     prompt: 'Prompt (vide = par défaut)', seed: 'Seed (-1 = aléatoire)', steps: 'Étapes',
     inset: 'Repeindre le bord de la carte (mm)', bleed: 'Fond perdu (mm)', guides: 'Trait de coupe',
-    go: 'Étendre', empty: 'Rien de généré pour le moment.',
-    uploading: 'Téléversement…', queued: "En file d'attente", running: 'Génération',
-    done: 'Terminé ({s}s, seed {seed})', error: 'Erreur : ',
+    go: 'Étendre', empty: 'Rien de généré pour le moment.', uploaded: 'Image téléversée',
+    uploading: 'Téléversement…', s_queued: "En file d'attente ({n} avant)", s_queued0: 'Prochain dans la file',
+    s_preparing: 'Préparation de la carte…', s_loading: 'Chargement du modèle IA (premier travail seulement, quelques minutes)…',
+    s_encoding: 'Lecture du prompt…', s_generating: 'Peinture · étape {step} sur {steps}', s_finishing: "Enregistrement des fichiers d'impression…",
+    eta: 'encore ~{t}', done: 'Terminé ({s}s, seed {seed})', error: 'Erreur : ',
     print: 'Impression ({w} × {h} mm, {dpi} dpi)', preview: 'Aperçu avec carte + étiquette',
     dlPdf: 'PDF (impression)', dlPng: 'PNG (impression)', dlPreview: 'Aperçu', dlRaw: 'Image brute', dlMask: 'Masque',
+    dlCutDxf: 'Ligne de coupe DXF', dlCutSvg: 'Ligne de coupe SVG', dlPrintCut: 'Impression + coupe SVG',
+    cutHint: "Pour l'impression-découpe (p. ex. Bambu Suite) : importez l'image et la ligne de coupe (le DXF garde la taille exacte). Les deux ont la même origine, en haut à gauche. Astuce : 2 mm de fond perdu, pour que la lame ne coupe jamais dans le papier blanc.",
     e_not_image: "Ce n'est pas une image (ou elle est trop grande).", e_too_large: 'Fichier trop volumineux (max. {max} Mo).',
     e_out_of_range: 'Une valeur est hors limites.', e_unknown_option: 'Format ou modèle inconnu.',
     e_queue_full: "Trop de tâches en file d'attente, réessayez plus tard.", e_job_failed: 'La génération a échoué : {msg}',
@@ -119,18 +141,22 @@ const I18N = {
     card: 'Kaart (Scan oder Foto)', template: 'Schabloun', model: 'Modell',
     prompt: 'Prompt (eidel = Standard)', seed: 'Seed (-1 = zoufälleg)', steps: 'Schrëtt',
     inset: 'Kaarte-Rand iwwermolen (mm)', bleed: 'Beschnëtt (mm)', guides: 'Schneidlinn',
-    go: 'Erweideren', empty: 'Nach näischt generéiert.',
-    uploading: 'Eroplueden…', queued: 'An der Waardeschlaang', running: 'Generéiert',
-    done: 'Fäerdeg ({s}s, Seed {seed})', error: 'Feeler: ',
+    go: 'Erweideren', empty: 'Nach näischt generéiert.', uploaded: 'Eropgeluedent Bild',
+    uploading: 'Eroplueden…', s_queued: 'An der Waardeschlaang ({n} virdrun)', s_queued0: 'Als Nächst drun',
+    s_preparing: 'Kaart gëtt virbereet…', s_loading: 'KI-Modell gëtt gelueden (just beim éischte Job, e puer Minutten)…',
+    s_encoding: 'Prompt gëtt gelies…', s_generating: 'Molen · Schrëtt {step} vun {steps}', s_finishing: 'Drockdateie ginn ofgespäichert…',
+    eta: 'nach ~{t}', done: 'Fäerdeg ({s}s, Seed {seed})', error: 'Feeler: ',
     print: 'Drock ({w} × {h} mm, {dpi} dpi)', preview: 'Virschau mat Kaart + Label',
     dlPdf: 'PDF (Drock)', dlPng: 'PNG (Drock)', dlPreview: 'Virschau', dlRaw: 'Rou-Bild', dlMask: 'Mask',
+    dlCutDxf: 'Schneidlinn DXF', dlCutSvg: 'Schneidlinn SVG', dlPrintCut: 'Drock + Schnëtt SVG',
+    cutHint: 'Fir Drécken-a-Schneiden (z. B. Bambu Suite): Drockbild a Schneidlinn importéieren (DXF hält déi exakt Gréisst). Allebéid hunn deeselwechten Nullpunkt uewe lénks. Tipp: 2 mm Beschnëtt, da schneit d’Messer ni an d’wäisst Pabeier.',
     e_not_image: 'Dat ass kee Bild (oder et ass ze grouss).', e_too_large: 'Fichier ze grouss (max. {max} MB).',
     e_out_of_range: 'E Wäert ass ausserhalb vum Beräich.', e_unknown_option: 'Onbekannt Schabloun oder Modell.',
     e_queue_full: 'Ze vill Jobs an der Waardeschlaang, méi spéit nach eng Kéier probéieren.', e_job_failed: 'Generéieren ass feelgeschloen: {msg}',
   },
 };
 const $ = s => document.querySelector(s);
-let lang = 'en', lastResult = null;
+let lang = 'en', lastResult = null, lastStatus = null, uploadUrl = null;
 const t = (key, vars = {}) => (I18N[lang][key] ?? I18N.en[key] ?? key).replace(/\{(\w+)\}/g, (_, k) => vars[k] ?? '');
 
 function setLang(l) {
@@ -138,7 +164,8 @@ function setLang(l) {
   document.documentElement.lang = lang;
   $('#lang').value = lang;
   document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
-  if (lastResult) show(...lastResult);
+  if (lastResult) show(...lastResult); else if (uploadUrl) showUpload();
+  if (lastStatus) setStatus(...lastStatus);
   try { localStorage.setItem('lang', lang); } catch {}
 }
 function initialLang() {
@@ -146,10 +173,47 @@ function initialLang() {
   return (navigator.languages || [navigator.language]).map(l => l.slice(0, 2).toLowerCase()).find(l => I18N[l]) || 'en';
 }
 $('#lang').addEventListener('change', e => setLang(e.target.value));
-setLang(initialLang());
 
 // Server errors arrive as {code, ...params}; FastAPI wraps them in "detail".
 const errText = d => (d && d.code) ? t('e_' + d.code, d) : String(d);
+const fmtTime = s => s >= 60 ? `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')} min` : `${s}s`;
+
+// Overall bar: each stage owns a slice of 0–100 %, painting gets most of it.
+const SLICES = { uploading: [0, 2], queued: [2, 4], preparing: [4, 6], loading: [6, 12], encoding: [12, 15], generating: [15, 96], finishing: [96, 99], done: [100, 100] };
+function setStatus(kind, text, eta = '', pct = 0) {
+  lastStatus = [kind, text, eta, pct];
+  const bar = $('#progress');
+  bar.classList.toggle('on', kind !== 'idle');
+  bar.classList.toggle('err', kind === 'error');
+  bar.querySelector('.bar').style.width = pct + '%';
+  $('#stage').textContent = text;
+  $('#eta').textContent = eta;
+}
+function statusFromJob(j) {
+  if (j.status === 'queued') {
+    const text = j.position ? t('s_queued', { n: j.position }) : t('s_queued0');
+    return ['run', text, '', SLICES.queued[0]];
+  }
+  const p = j.progress || { stage: 'preparing' };
+  const [a, b] = SLICES[p.stage] || SLICES.preparing;
+  const frac = p.steps ? p.step / p.steps : 0;
+  const text = p.stage === 'generating' ? t('s_generating', { step: p.step, steps: p.steps }) : t('s_' + p.stage);
+  const eta = p.stage === 'generating' && p.eta_s != null && p.step > 0 ? t('eta', { t: fmtTime(p.eta_s) }) : '';
+  return ['run', text, eta, a + (b - a) * frac];
+}
+
+function showUpload() {
+  $("#out").innerHTML = `<div class="results single"><figure><img src="${uploadUrl}" alt=""><figcaption>${t('uploaded')}</figcaption></figure></div>`;
+}
+$('#file').addEventListener('change', e => {
+  const f = e.target.files[0];
+  if (uploadUrl) URL.revokeObjectURL(uploadUrl);
+  uploadUrl = f ? URL.createObjectURL(f) : null;
+  $('#thumb').style.display = uploadUrl ? 'block' : 'none';
+  if (uploadUrl) { $('#thumb').src = uploadUrl; lastResult = null; showUpload(); }
+});
+
+setLang(initialLang());
 
 fetch('api/config').then(r => r.json()).then(c => {
   $('#template').innerHTML = Object.entries(c.templates).map(([k, v]) => `<option value="${k}">${v}</option>`).join('');
@@ -159,28 +223,33 @@ fetch('api/config').then(r => r.json()).then(c => {
 $('#f').addEventListener('submit', async e => {
   e.preventDefault();
   const btn = $('#go'); btn.disabled = true;
-  const status = $('#status'); status.textContent = t('uploading');
+  setStatus('run', t('uploading'), '', SLICES.uploading[0]);
   const t0 = Date.now();
   try {
     const r = await fetch('api/extend', { method: 'POST', body: new FormData(e.target) });
     if (!r.ok) throw new Error(errText((await r.json().catch(() => ({}))).detail || r.statusText));
     const { id } = await r.json();
     for (;;) {
-      await new Promise(res => setTimeout(res, 2000));
+      await new Promise(res => setTimeout(res, 1500));
       const j = await (await fetch(`api/jobs/${id}`)).json();
-      const s = Math.round((Date.now() - t0) / 1000);
       if (j.status === 'error') throw new Error(errText(j.error));
-      if (j.status === 'done') { show(id, j.meta); status.textContent = t('done', { s, seed: j.meta.seed }); break; }
-      status.textContent = t(j.status === 'queued' ? 'queued' : 'running') + ` … ${s}s`;
+      if (j.status === 'done') {
+        show(id, j.meta);
+        setStatus('done', t('done', { s: Math.round((Date.now() - t0) / 1000), seed: j.meta.seed }), '', 100);
+        break;
+      }
+      setStatus(...statusFromJob(j));
     }
-  } catch (err) { status.textContent = t('error') + err.message; }
+  } catch (err) { setStatus('error', t('error') + err.message, '', 100); }
   btn.disabled = false;
 });
 function show(id, m) {
   lastResult = [id, m];
-  const u = n => `api/jobs/${id}/${n}?t=${Date.now()}`;
+  const u = n => `api/jobs/${id}/${n}`;
+  const up = uploadUrl ? `<figure><img src="${uploadUrl}" alt=""><figcaption>${t('uploaded')}</figcaption></figure>` : '';
   $('#out').innerHTML = `
     <div class="results">
+      ${up}
       <figure><img src="${u('print.png')}" alt=""><figcaption>${t('print', { w: m.size_mm[0], h: m.size_mm[1], dpi: m.dpi })}</figcaption></figure>
       <figure><img src="${u('preview.jpg')}" alt=""><figcaption>${t('preview')}</figcaption></figure>
     </div>
@@ -190,7 +259,13 @@ function show(id, m) {
       <a href="${u('preview.jpg')}" download>${t('dlPreview')}</a>
       <a href="${u('raw.png')}" download>${t('dlRaw')}</a>
       <a href="${u('mask.png')}" download>${t('dlMask')}</a>
-    </div>`;
+    </div>
+    <div class="dl">
+      <a class="cut" href="${u('cut.dxf')}" download>${t('dlCutDxf')}</a>
+      <a class="cut" href="${u('cut.svg')}" download>${t('dlCutSvg')}</a>
+      <a class="cut" href="${u('print-cut.svg')}" download>${t('dlPrintCut')}</a>
+    </div>
+    <p class="hint">${t('cutHint')}</p>`;
 }
 </script>
 </body>

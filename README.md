@@ -8,7 +8,8 @@ Output: `print.pdf` / `print.png` at exact physical size (300 dpi by default), p
 `preview.jpg` showing the card and a label in place.
 
 Web UI in **English, Deutsch, Français and Lëtzebuergesch** (follows the browser language,
-switchable in the top corner).
+switchable in the top corner), with a progress bar (stage, step, time left) and a preview of the
+uploaded image.
 
 ## Install
 Needs an NVIDIA GPU with **≥ 12 GB VRAM**.
@@ -71,6 +72,20 @@ drop in another `*.json` to add a format.
 | `CUDA out of memory` | `FLUX_GGUF_FILE: flux1-fill-dev-Q4_K_S.gguf` |
 | Black image | `TORCH_DTYPE: float32` (fp16 overflows) |
 | `401` / `gated repo` | FLUX licence not accepted, or wrong token |
+
+## Print then cut (Bambu Lab cutting module, other cutters)
+Every job also writes the slab outline as a cut line, in millimetres, with the same origin
+(top left) as `print.png`:
+
+| File | Use |
+|---|---|
+| `cut.dxf` | Cut line only. Recommended for Bambu Suite — DXF imports at true size |
+| `cut.svg` | Cut line only (red, `0.1 mm`) |
+| `print-cut.svg` | Print image and cut line in one file, already aligned |
+
+On Bambu Lab printers (H2D/H2S with the cutting module) print-then-cut runs in **Bambu Suite**:
+import the print image and the cut line, set the cut line to *Basic Cut*, check the size in mm.
+Use **2 mm bleed** so the blade never runs along the edge of white paper.
 
 ## CLI
 ```bash

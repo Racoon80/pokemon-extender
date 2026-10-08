@@ -20,13 +20,26 @@ DEFAULT_PROMPT = (
 NEGATIVE_PROMPT = "text, letters, watermark, logo, frame, border, card, blurry, low quality"
 
 
+def _no_progress(stage: str, step: int = 0, steps: int = 0) -> None:
+    pass
+
+
 class Backend:
     name = "base"
     multiple = 8          # width/height must be a multiple of this
     megapixels = 1.0      # working resolution the model is happiest at
 
-    def generate(self, image: Image.Image, mask: Image.Image, prompt: str, seed: int, steps: int) -> Image.Image:
+    def generate(self, image: Image.Image, mask: Image.Image, prompt: str, seed: int, steps: int,
+                 progress=_no_progress) -> Image.Image:
+        """progress(stage, step, steps) with stage "encoding" or "generating"."""
         raise NotImplementedError
+
+    @staticmethod
+    def _step_callback(progress, steps):
+        def cb(pipe, i, t, kwargs):
+            progress("generating", i + 1, steps)
+            return kwargs
+        return cb
 
 
 class PreviewBackend(Backend):
@@ -34,7 +47,8 @@ class PreviewBackend(Backend):
     name = "preview"
     megapixels = 1.5
 
-    def generate(self, image, mask, prompt, seed, steps):
+    def generate(self, image, mask, prompt, seed, steps, progress=_no_progress):
+        progress("generating", 0, 1)
         small = 4
         rgb = np.asarray(image.reduce(small))
         m = np.asarray(mask.convert("L").reduce(small))
@@ -42,6 +56,7 @@ class PreviewBackend(Backend):
         filled = cv2.GaussianBlur(filled, (0, 0), 6)
         up = cv2.resize(filled, image.size, interpolation=cv2.INTER_CUBIC)
         out = Image.fromarray(cv2.cvtColor(up, cv2.COLOR_BGR2RGB))
+        progress("generating", 1, 1)
         return Image.composite(out, image, mask.convert("L"))
 
 
@@ -106,9 +121,10 @@ class FluxFillBackend(Backend):
         self.pipe = _place(pipe, 12)
         self._encode(DEFAULT_PROMPT)
 
-    def _encode(self, prompt: str) -> tuple:
+    def _encode(self, prompt: str, progress=_no_progress) -> tuple:
         if prompt in self._embeds:
             return self._embeds[prompt]
+        progress("encoding")
         from transformers import T5EncoderModel
         torch = self.torch
         t5 = T5EncoderModel.from_pretrained(self.t5_repo, subfolder="text_encoder_2", torch_dtype=self.dtype)
@@ -129,13 +145,15 @@ class FluxFillBackend(Backend):
         self._embeds[prompt] = (prompt_embeds, pooled)
         return self._embeds[prompt]
 
-    def generate(self, image, mask, prompt, seed, steps):
-        prompt_embeds, pooled = self._encode(prompt)
+    def generate(self, image, mask, prompt, seed, steps, progress=_no_progress):
+        prompt_embeds, pooled = self._encode(prompt, progress)
+        progress("generating", 0, steps)
         return self.pipe(
             prompt_embeds=prompt_embeds, pooled_prompt_embeds=pooled, image=image, mask_image=mask,
             width=image.width, height=image.height,
             guidance_scale=30.0, num_inference_steps=steps,
             generator=self.torch.Generator("cpu").manual_seed(seed),
+            callback_on_step_end=self._step_callback(progress, steps),
         ).images[0]
 
 
@@ -153,8 +171,10 @@ class SdxlInpaintBackend(Backend):
             model, torch_dtype=torch.float16, variant="fp16"), 12)
         self.torch = torch
 
-    def generate(self, image, mask, prompt, seed, steps):
+    def generate(self, image, mask, prompt, seed, steps, progress=_no_progress):
+        progress("generating", 0, steps)
         return self.pipe(
+            callback_on_step_end=self._step_callback(progress, steps),
             prompt=prompt, negative_prompt=NEGATIVE_PROMPT, image=image, mask_image=mask,
             width=image.width, height=image.height, strength=0.99, guidance_scale=7.0,
             num_inference_steps=steps, generator=self.torch.Generator("cpu").manual_seed(seed),
@@ -168,6 +188,10 @@ _load_lock = threading.Lock()
 
 def available() -> list[str]:
     return list(_REGISTRY)
+
+
+def is_loaded(name: str) -> bool:
+    return name in _loaded
 
 
 def get_backend(name: str) -> Backend:
