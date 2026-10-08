@@ -23,6 +23,9 @@ Brauch eng NVIDIA-Kaart mat **≥ 12 GB VRAM**.
    ```
 4. `http://localhost:8000`
 
+   Den Port ass nëmmen um eegene Computer op (`127.0.0.1`). Fir am LAN: an
+   `docker-compose.yml` op `"8000:8000"` stellen. Et gëtt **kee Login** — net am Internet opmaachen.
+
 Den éischte Start lued **~15 GB** an `./data` (GGUF-Transformer 8,3 GB + T5 nf4 6,3 GB +
 CLIP/VAE). Fortschrëtt: `docker logs -f pokemon-extender`.
 
@@ -51,6 +54,8 @@ nomoossen. D'JSON gëtt bei all Job nei gelueden, kee Rebuild néideg.
 | `FLUX_GGUF_FILE` | `flux1-fill-dev-Q5_K_S.gguf` (8,3 GB). Ze wéineg VRAM → `…-Q4_K_S.gguf` (6,8 GB); méi Qualitéit → `…-Q8_0.gguf` (12,7 GB, > 16 GB VRAM) |
 | `TORCH_DTYPE` | `auto` = bf16 ab Ampere (RTX 30xx), fp16 op méi alen Kaarten. Schwaarz Biller → `float32` |
 | `CPU_OFFLOAD` | `auto` schalt sech an, wann < 12 GB VRAM fräi sinn |
+| `MAX_UPLOAD_MB` / `MAX_PENDING` | Upload-Limit (25 MB) a max. Jobs an der Schlaang (5) |
+| `OUTPUT_TTL_HOURS` | Resultater ginn no 72 h geläscht |
 
 ## Wann eppes net geet
 | Problem | Léisung |
