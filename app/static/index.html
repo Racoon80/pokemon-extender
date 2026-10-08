@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="lb">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pokemon Extender</title>
+<style>
+  :root { --bg:#f4f4f6; --panel:#fff; --text:#1d1d22; --muted:#6b6b76; --line:#dcdce2; --accent:#d22a33; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#141417; --panel:#1e1e23; --text:#ececf0; --muted:#9a9aa6; --line:#33333b; } }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:15px/1.45 system-ui, sans-serif; }
+  main { max-width:1100px; margin:0 auto; padding:24px 16px; display:grid; gap:20px; grid-template-columns:340px 1fr; }
+  @media (max-width:800px) { main { grid-template-columns:1fr; } }
+  h1 { font-size:20px; margin:0 0 4px; } p.sub { margin:0 0 16px; color:var(--muted); }
+  .panel { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:16px; }
+  label { display:block; font-size:13px; color:var(--muted); margin:12px 0 4px; }
+  input, select, textarea { width:100%; padding:8px; border:1px solid var(--line); border-radius:6px; background:var(--bg); color:var(--text); font:inherit; }
+  textarea { min-height:70px; resize:vertical; }
+  .row { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .check { display:flex; gap:8px; align-items:center; margin-top:12px; color:var(--text); font-size:14px; }
+  .check input { width:auto; }
+  button { margin-top:16px; width:100%; padding:11px; border:0; border-radius:8px; background:var(--accent); color:#fff; font-weight:600; font-size:15px; cursor:pointer; }
+  button:disabled { opacity:.5; cursor:wait; }
+  #status { margin-top:10px; font-size:14px; color:var(--muted); min-height:1.4em; }
+  .results { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  .results figure { margin:0; } .results img { width:100%; border-radius:8px; border:1px solid var(--line); background:#fff; }
+  figcaption { font-size:13px; color:var(--muted); margin-top:4px; }
+  .dl { display:flex; flex-wrap:wrap; gap:8px; margin-top:14px; }
+  .dl a { padding:6px 10px; border:1px solid var(--line); border-radius:6px; color:var(--text); text-decoration:none; font-size:13px; }
+  .empty { color:var(--muted); text-align:center; padding:60px 10px; }
+</style>
+</head>
+<body>
+<main>
+  <section>
+    <h1>Pokémon Extender</h1>
+    <p class="sub">Kaart eropluede → Bild gëtt op Slab-Gréisst erweidert. Kaart- a Label-Beräich bleiwe wäiss.</p>
+    <form class="panel" id="f">
+      <label>Kaart (Scan oder Foto)</label>
+      <input type="file" name="file" accept="image/*" required>
+      <div class="row">
+        <div><label>Schabloun</label><select name="template" id="template"></select></div>
+        <div><label>Modell</label><select name="backend" id="backend"></select></div>
+      </div>
+      <label>Prompt (eidel = Standard)</label>
+      <textarea name="prompt" id="prompt"></textarea>
+      <div class="row">
+        <div><label>Seed (-1 = zoufälleg)</label><input name="seed" type="number" value="-1"></div>
+        <div><label>Schrëtt</label><input name="steps" type="number" value="40" min="1" max="100"></div>
+      </div>
+      <div class="row">
+        <div><label>Kaarte-Rand iwwermolen (mm)</label><input name="inset_mm" type="number" value="2.5" step="0.5" min="0" max="10"></div>
+        <div><label>Beschnëtt / Bleed (mm)</label><input name="bleed_mm" type="number" value="0" step="0.5" min="0" max="10"></div>
+      </div>
+      <div class="row">
+        <div><label>DPI</label><input name="dpi" type="number" value="300" min="72" max="1200"></div>
+        <div><label class="check"><input type="checkbox" name="guides" value="true"> Schneidlinn</label></div>
+      </div>
+      <button id="go">Erweideren</button>
+      <div id="status"></div>
+    </form>
+  </section>
+  <section class="panel" id="out"><div class="empty">Nach näischt generéiert.</div></section>
+</main>
+<script>
+const $ = s => document.querySelector(s);
+fetch('api/config').then(r => r.json()).then(c => {
+  $('#template').innerHTML = Object.entries(c.templates).map(([k, v]) => `<option value="${k}">${v}</option>`).join('');
+  $('#backend').innerHTML = c.backends.map(b => `<option ${b === c.default_backend ? 'selected' : ''}>${b}</option>`).join('');
+  $('#prompt').placeholder = c.default_prompt;
+});
+$('#f').addEventListener('submit', async e => {
+  e.preventDefault();
+  const btn = $('#go'); btn.disabled = true;
+  const status = $('#status'); status.textContent = 'Eropluede…';
+  const t0 = Date.now();
+  try {
+    const r = await fetch('api/extend', { method: 'POST', body: new FormData(e.target) });
+    if (!r.ok) throw new Error((await r.json()).detail || r.statusText);
+    const { id } = await r.json();
+    for (;;) {
+      await new Promise(res => setTimeout(res, 2000));
+      const j = await (await fetch(`api/jobs/${id}`)).json();
+      const secs = Math.round((Date.now() - t0) / 1000);
+      if (j.status === 'error') throw new Error(j.error);
+      if (j.status === 'done') { show(id, j.meta); status.textContent = `Fäerdeg (${secs}s, Seed ${j.meta.seed})`; break; }
+      status.textContent = (j.status === 'queued' ? 'An der Waardeschlaang' : 'Generéiert') + ` … ${secs}s`;
+    }
+  } catch (err) { status.textContent = 'Feeler: ' + err.message; }
+  btn.disabled = false;
+});
+function show(id, m) {
+  const u = n => `api/jobs/${id}/${n}?t=${Date.now()}`;
+  $('#out').innerHTML = `
+    <div class="results">
+      <figure><img src="${u('print.png')}"><figcaption>Drock (${m.size_mm.join(' × ')} mm, ${m.dpi} dpi)</figcaption></figure>
+      <figure><img src="${u('preview.jpg')}"><figcaption>Virschau mat Kaart + Label</figcaption></figure>
+    </div>
+    <div class="dl">
+      <a href="${u('print.pdf')}" download>PDF (Drock)</a>
+      <a href="${u('print.png')}" download>PNG (Drock)</a>
+      <a href="${u('preview.jpg')}" download>Virschau</a>
+      <a href="${u('raw.png')}" download>Rou-Bild</a>
+      <a href="${u('mask.png')}" download>Mask</a>
+    </div>`;
+}
+</script>
+</body>
+</html>

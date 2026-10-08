@@ -1,0 +1,33 @@
+# Pokemon-Extender — fir eng NVIDIA-Kaart mat 12 GB VRAM
+#
+# Viraussetzungen: Docker + NVIDIA-Treiber + nvidia-container-toolkit
+#   (Windows: Docker Desktop mat WSL2, de GPU-Support ass do dran)
+# Start:   docker compose up -d --build
+# Web-UI:  http://localhost:8000
+services:
+  pokemon-extender:
+    build: .
+    image: pokemon-extender:latest
+    container_name: pokemon-extender
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    env_file: .env                     # HF_TOKEN=… (kuck .env.example)
+    environment:
+      DEFAULT_BACKEND: flux
+      # 12 GB VRAM: Q5_K_S (8,3 GB) passt. Leeft et aus dem Späicher → Q4_K_S (6,8 GB).
+      FLUX_GGUF_FILE: flux1-fill-dev-Q5_K_S.gguf
+      TORCH_DTYPE: auto                # bf16 ab RTX 30xx, fp16 op méi alen Kaarten
+      CPU_OFFLOAD: auto                # schalt sech bei < 12 GB fräi VRAM an
+      PRELOAD: "1"                     # Modell beim Start lueden (éischte Start: ~15 GB Download)
+    volumes:
+      - ./data:/data                   # Modell-Cache + Resultater
+      - ./templates:/srv/templates     # Slab-Mooss, ouni Rebuild z'änneren
+    shm_size: 2gb
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]

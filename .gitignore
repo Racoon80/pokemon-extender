@@ -1,0 +1,10 @@
+data/
+out/
+__pycache__/
+*.pyc
+.env
+samples/
+deploy/
+.claude/
+.mcp.json
+.DS_Store

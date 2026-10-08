@@ -1,0 +1,10 @@
+{
+  "name": "PSA Slab (Acryl-Case)",
+  "note": "Baussemooss 81 x 136 mm = déi meescht zitéiert PSA-Slab-Gréisst (PSA publizéiert keng offiziell Spec). Label- a Kaartepositioun aus dem Beispill-Bild gemooss (Kaart = 63 mm) — mat engem richtege Slab nomoossen.",
+  "width_mm": 81,
+  "height_mm": 136,
+  "corner_radius_mm": 4,
+  "card":  { "x_mm": 9.0, "y_mm": 35.5, "w_mm": 63, "h_mm": 88, "radius_mm": 3 },
+  "label": { "x_mm": 6.5, "y_mm": 5.6,  "w_mm": 68, "h_mm": 18.3, "radius_mm": 1 },
+  "white_margin_mm": 0.5
+}
