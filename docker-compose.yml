@@ -1,19 +1,14 @@
 # Pokemon-Extender — for an NVIDIA GPU with 12 GB VRAM or more
+# (Unraid with the Compose Manager plugin: use unraid/docker-compose.yml instead.)
 #
 # Needs: Docker + NVIDIA driver + nvidia-container-toolkit
 #   (Windows: Docker Desktop with the WSL2 backend, GPU support is built in)
-# Install: cp .env.example .env   (put your Hugging Face token in), then
-#          docker compose up -d --build   ← downloads the AI model (~15 GB) once, during the build
-# Web UI:  http://localhost:8000
+# 1. Put your Hugging Face token below (HF_TOKEN).
+# 2. docker compose up -d --build
+# 3. http://localhost:8000 — the first start downloads the AI model (~15 GB) once; the page shows the progress.
 services:
   pokemon-extender:
-    build:
-      context: .
-      args:
-        # 12 GB VRAM: Q5_K_S (8.3 GB) fits. Out of memory → flux1-fill-dev-Q4_K_S.gguf (6.8 GB).
-        FLUX_GGUF_FILE: flux1-fill-dev-Q5_K_S.gguf
-      secrets:
-        - hf_env
+    build: .
     image: pokemon-extender:latest
     container_name: pokemon-extender
     restart: unless-stopped
@@ -22,12 +17,15 @@ services:
       # so never expose it to the internet (or put a reverse proxy with auth in front).
       - "127.0.0.1:8000:8000"
     environment:
+      # Hugging Face token (read access) of an account that accepted the FLUX.1 Fill licence:
+      # https://huggingface.co/black-forest-labs/FLUX.1-Fill-dev
+      HF_TOKEN: "hf_PUT_YOUR_TOKEN_HERE"
+      # 12 GB VRAM: Q5_K_S (8.3 GB) fits. Out of memory → flux1-fill-dev-Q4_K_S.gguf (6.8 GB).
+      FLUX_GGUF_FILE: flux1-fill-dev-Q5_K_S.gguf
       TORCH_DTYPE: auto                # bf16 on RTX 30xx and newer, float32 on older cards
       CPU_OFFLOAD: auto                # switches on below 12 GB free VRAM
-      PRELOAD: "1"                     # load the model into the GPU at start
     volumes:
-      - ./data:/data                   # results
-      - ./templates:/srv/templates     # slab measurements, editable without a rebuild
+      - ./data:/data                   # AI model, results, own templates (data/templates/*.json)
     shm_size: 2gb
     deploy:
       resources:
@@ -36,7 +34,3 @@ services:
             - driver: nvidia
               count: 1
               capabilities: [gpu]
-
-secrets:
-  hf_env:
-    file: ./.env                       # only used while building, never inside the container

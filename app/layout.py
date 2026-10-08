@@ -2,10 +2,20 @@
 from __future__ import annotations
 
 import json
+import os
 from dataclasses import dataclass
 from pathlib import Path
 
 TEMPLATE_DIR = Path(__file__).resolve().parent.parent / "templates"
+# Own or corrected formats; a file here wins over a built-in one with the same name.
+USER_TEMPLATE_DIR = Path(os.environ.get("USER_TEMPLATE_DIR", "/data/templates"))
+
+
+def _template_path(name: str) -> Path | None:
+    for d in (USER_TEMPLATE_DIR, TEMPLATE_DIR):
+        if (d / f"{name}.json").is_file():
+            return d / f"{name}.json"
+    return None
 
 
 @dataclass(frozen=True)
@@ -63,8 +73,8 @@ def _rect(d: dict) -> Rect:
 
 
 def load_layout(name: str) -> Layout:
-    path = TEMPLATE_DIR / f"{name}.json"
-    if not path.is_file():
+    path = _template_path(name)
+    if path is None:
         raise ValueError(f"Template '{name}' does not exist ({', '.join(list_layouts())})")
     d = json.loads(path.read_text())
     layout = Layout(d["name"], d["width_mm"], d["height_mm"], d.get("corner_radius_mm", 0.0),
@@ -76,4 +86,4 @@ def load_layout(name: str) -> Layout:
 
 
 def list_layouts() -> list[str]:
-    return sorted(p.stem for p in TEMPLATE_DIR.glob("*.json"))
+    return sorted({p.stem for d in (TEMPLATE_DIR, USER_TEMPLATE_DIR) if d.is_dir() for p in d.glob("*.json")})

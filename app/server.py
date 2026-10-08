@@ -16,7 +16,7 @@ from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from PIL import Image
 
-from . import backends
+from . import backends, models
 from .layout import list_layouts, load_layout
 from .pipeline import Options, run
 
@@ -39,10 +39,35 @@ gpu = ThreadPoolExecutor(max_workers=1)
 jobs: dict[str, dict] = {}
 
 
+# First start: download (~15 GB), then load into the GPU. Shown in the UI while it happens.
+model_state: dict = {"state": "ready" if DEFAULT_BACKEND == "preview" else "waiting"}
+
+
+def _prepare_model() -> None:
+    try:
+        if not models.is_cached():
+            if not os.environ.get("HF_TOKEN", "").startswith("hf_"):
+                model_state.update(state="error", error={"code": "no_token"})
+                log.error("HF_TOKEN missing: set it in the compose file")
+                return
+            models.fetch_all(lambda i, n, name: model_state.update(state="downloading", part=i, parts=n))
+        model_state.update(state="loading")
+        backends.get_backend(DEFAULT_BACKEND)
+        model_state.update(state="ready")
+    except Exception as e:
+        log.exception("Model preparation failed")
+        model_state.update(state="error", error={"code": "model_failed", "msg": str(e)})
+
+
 @app.on_event("startup")
 def preload() -> None:
     if os.environ.get("PRELOAD", "1") == "1" and DEFAULT_BACKEND != "preview":
-        gpu.submit(backends.get_backend, DEFAULT_BACKEND)
+        gpu.submit(_prepare_model)
+
+
+@app.get("/api/status")
+def status():
+    return model_state
 
 
 @app.get("/")
@@ -77,6 +102,9 @@ def _work(job_id: str, img: Image.Image, opts: Options) -> None:
     job = jobs[job_id]
     job["status"] = "running"
     job["progress"] = {"stage": "preparing", "step": 0, "steps": 0}
+    if model_state["state"] == "error" and opts.backend == DEFAULT_BACKEND:
+        job.update(status="error", error=model_state["error"], finished=time.time())
+        return
     try:
         job["meta"] = run(img, opts, OUT_DIR / job_id, _progress_for(job))
         jobs[job_id]["status"] = "done"
@@ -143,7 +171,7 @@ def job(job_id: str):
     job = jobs[job_id]
     if job["status"] == "queued":
         ahead = sum(1 for j in jobs.values() if j["status"] in ("queued", "running") and j["created"] < job["created"])
-        return {**job, "position": ahead}
+        return {**job, "position": ahead, "model": model_state}
     return job
 
 

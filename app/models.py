@@ -1,14 +1,12 @@
-"""The model files the app uses. They are fetched once, while the Docker image is built.
+"""The model files the app uses (~15 GB). Downloaded once on the first start into HF_HOME (a volume).
 
-`python -m app.models` downloads them into HF_HOME. The Dockerfile runs it with the Hugging Face
-token mounted as a build secret (the .env file), so the token never ends up in the image, and the
-running container works offline.
+FLUX.1 Fill dev is gated: HF_TOKEN must belong to a Hugging Face account that accepted its licence.
+Once everything is cached, nothing is fetched again and the token is no longer needed.
 """
 from __future__ import annotations
 
 import os
-import sys
-from pathlib import Path
+from typing import Callable
 
 from huggingface_hub import hf_hub_download, snapshot_download
 
@@ -22,41 +20,45 @@ BASE_PATTERNS = ["model_index.json", "scheduler/*", "text_encoder/*", "tokenizer
                  "vae/*", "transformer/config.json"]
 
 
-def base_dir(token: str | None = None) -> str:
-    return snapshot_download(FLUX_REPO, allow_patterns=BASE_PATTERNS, token=token)
+def _cached_first(fetch: Callable[..., str]) -> str:
+    """Use the local copy when there is one, so a finished download never needs the network again."""
+    try:
+        return fetch(local_files_only=True)
+    except Exception:
+        return fetch(local_files_only=False)
 
 
-def gguf_path(token: str | None = None) -> str:
-    return hf_hub_download(GGUF_REPO, GGUF_FILE, token=token)
+def base_dir() -> str:
+    return _cached_first(lambda **kw: snapshot_download(FLUX_REPO, allow_patterns=BASE_PATTERNS, **kw))
 
 
-def t5_dir(token: str | None = None) -> str:
-    return snapshot_download(T5_REPO, allow_patterns=["text_encoder_2/*"], token=token)
+def gguf_path() -> str:
+    return _cached_first(lambda **kw: hf_hub_download(GGUF_REPO, GGUF_FILE, **kw))
 
 
-def _token_from(env_file: Path) -> str | None:
-    if not env_file.is_file():
-        return None
-    for line in env_file.read_text().splitlines():
-        key, _, value = line.strip().partition("=")
-        if key == "HF_TOKEN" and value and not value.startswith("hf_..."):
-            return value.strip().strip('"').strip("'")
-    return None
+def t5_dir() -> str:
+    return _cached_first(lambda **kw: snapshot_download(T5_REPO, allow_patterns=["text_encoder_2/*"], **kw))
 
 
-def main() -> None:
-    token = os.environ.get("HF_TOKEN") or _token_from(Path(sys.argv[1] if len(sys.argv) > 1 else "/run/secrets/hf_env"))
-    if not token:
-        sys.exit("No Hugging Face token. Put HF_TOKEN=... into .env (see .env.example) and build again.")
-    for name, fetch in (("FLUX Fill base", base_dir), (f"transformer {GGUF_FILE}", gguf_path), ("T5 nf4", t5_dir)):
-        print(f"Downloading {name} …", flush=True)
-        try:
-            fetch(token)
-        except Exception as e:  # make the build fail with a readable reason
-            sys.exit(f"Download of {name} failed: {e}\n"
-                     f"Did you accept the licence at https://huggingface.co/{FLUX_REPO} ?")
-    print("Models ready.", flush=True)
+PARTS = (("FLUX Fill base", base_dir), (GGUF_FILE, gguf_path), ("T5 text encoder", t5_dir))
+
+
+def is_cached() -> bool:
+    try:
+        snapshot_download(FLUX_REPO, allow_patterns=BASE_PATTERNS, local_files_only=True)
+        hf_hub_download(GGUF_REPO, GGUF_FILE, local_files_only=True)
+        snapshot_download(T5_REPO, allow_patterns=["text_encoder_2/*"], local_files_only=True)
+        return True
+    except Exception:
+        return False
+
+
+def fetch_all(on_part: Callable[[int, int, str], None] = lambda i, n, name: None) -> None:
+    for i, (name, fetch) in enumerate(PARTS, 1):
+        on_part(i, len(PARTS), name)
+        fetch()
 
 
 if __name__ == "__main__":
-    main()
+    fetch_all(lambda i, n, name: print(f"[{i}/{n}] {name}", flush=True))
+    print("Models ready.")

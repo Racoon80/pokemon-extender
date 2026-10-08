@@ -12,30 +12,39 @@ switchable in the top corner), with a progress bar (stage, step, time left) and 
 uploaded image.
 
 ## Install
-Needs an NVIDIA GPU with **≥ 12 GB VRAM**.
+Needs an NVIDIA GPU with **≥ 12 GB VRAM** and a free Hugging Face account: FLUX.1 Fill dev is
+*gated*, so accept its licence at
+[huggingface.co/black-forest-labs/FLUX.1-Fill-dev](https://huggingface.co/black-forest-labs/FLUX.1-Fill-dev)
+and create a token with read access. Everything is set in the compose file — no `.env` needed.
 
+The first start downloads the AI model (**~15 GB**: GGUF transformer 8.3 GB + T5 nf4 6.3 GB +
+CLIP/VAE) into the data volume; the web page shows the progress. After that the token and the
+internet are no longer needed. After every start the model needs a few minutes to load into the GPU.
+
+### Unraid (Compose Manager plugin)
+1. Apps: install **Nvidia Driver** and **Docker Compose Manager**.
+2. Docker → *Compose* → *Add New Stack* → name `Pokemon-Extender`.
+3. *Edit Stack* → *Compose File*: paste [`unraid/docker-compose.yml`](unraid/docker-compose.yml),
+   put your token into `HF_TOKEN`, save.
+4. *Compose Up*. Docker builds the image straight from this GitHub repo; nothing to clone.
+5. Open `http://<unraid-ip>:8000` (or *WebUI* in the Docker tab).
+
+Update: *Compose Down*, then *Update Stack* (rebuilds from GitHub), *Compose Up*.
+
+### Linux / Windows (Docker)
 1. NVIDIA driver and Docker with GPU support
    - Linux: Docker + [nvidia-container-toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html)
    - Windows: Docker Desktop (WSL2 backend)
    - Check: `docker run --rm --gpus all nvidia/cuda:12.4.1-base-ubuntu22.04 nvidia-smi`
-2. FLUX.1-Fill-dev is *gated*: accept the licence at
-   [huggingface.co/black-forest-labs/FLUX.1-Fill-dev](https://huggingface.co/black-forest-labs/FLUX.1-Fill-dev)
-   and create a read token.
-3. ```bash
+2. ```bash
    git clone https://github.com/Racoon80/pokemon-extender.git && cd pokemon-extender
-   cp .env.example .env      # put your HF_TOKEN in
+   # put your token into HF_TOKEN in docker-compose.yml
    docker compose up -d --build
    ```
-   The build downloads the AI model (**~15 GB**: GGUF transformer 8.3 GB + T5 nf4 6.3 GB +
-   CLIP/VAE) into the image. The token is passed as a build secret and is not stored in the
-   image; the running container needs no internet access. Code updates (`git pull` + the same
-   command) reuse the model layer and do not download it again.
-4. Open `http://localhost:8000`
+3. Open `http://localhost:8000`
 
    The port only listens on the local machine (`127.0.0.1`). For your LAN, change it to
    `"8000:8000"` in `docker-compose.yml`. There is **no login** — never expose it to the internet.
-
-After a start the model needs a few minutes to load into the GPU; the progress bar shows it.
 
 ## How it works
 1. Find the card in the photo, straighten it, crop to 63:88 (`app/card.py`).
@@ -58,13 +67,15 @@ Pick the format in the web UI (or `--template` on the CLI). All values in mm.
 
 Outer sizes are the most widely quoted figures — neither PSA nor Beckett publishes an official
 spec. Label and card positions are measured from product photos (PSA) or estimated (BGS):
-check them against a real slab. The JSON files are re-read for every job, no rebuild needed;
-drop in another `*.json` to add a format.
+check them against a real slab. To correct one or add a format, put a `*.json` into
+`templates/` inside the data volume (Unraid: `/mnt/user/appdata/pokemon-extender/templates/`); a
+file there wins over the built-in one with the same name. It is read for every job.
 
 ## Settings (`docker-compose.yml`)
 | Variable | |
 |---|---|
-| `FLUX_GGUF_FILE` (build arg) | `flux1-fill-dev-Q5_K_S.gguf` (8.3 GB). Less VRAM → `…-Q4_K_S.gguf` (6.8 GB); better quality → `…-Q8_0.gguf` (12.7 GB, > 16 GB VRAM). Rebuild after changing it |
+| `HF_TOKEN` | Your Hugging Face token, only needed for the first download |
+| `FLUX_GGUF_FILE` | `flux1-fill-dev-Q5_K_S.gguf` (8.3 GB). Less VRAM → `…-Q4_K_S.gguf` (6.8 GB); better quality → `…-Q8_0.gguf` (12.7 GB, > 16 GB VRAM). Downloaded on the next start |
 | `TORCH_DTYPE` | `auto` = bf16 on Ampere (RTX 30xx) and newer, float32 on older cards (fp16 makes FLUX overflow into black images) |
 | `CPU_OFFLOAD` | `auto` switches on below 12 GB free VRAM |
 | `MAX_UPLOAD_MB` / `MAX_PENDING` | Upload limit (25 MB) and max. jobs in the queue (5) |
@@ -73,9 +84,9 @@ drop in another `*.json` to add a format.
 ## Troubleshooting
 | Problem | Fix |
 |---|---|
-| `CUDA out of memory` | build arg `FLUX_GGUF_FILE: flux1-fill-dev-Q4_K_S.gguf`, then `docker compose up -d --build` |
+| `CUDA out of memory` | `FLUX_GGUF_FILE: flux1-fill-dev-Q4_K_S.gguf`, restart |
 | Black image | `TORCH_DTYPE: float32` (fp16 overflows) |
-| Build stops with `401` / `gated repo` | FLUX licence not accepted, or wrong token in `.env` |
+| Page shows *HF_TOKEN is missing* or `401` / `gated repo` | FLUX licence not accepted, or wrong token in the compose file |
 
 ## Print then cut (Bambu Lab cutting module, other cutters)
 Every job also writes the cut lines — the slab outline plus the card and label windows (cut
