@@ -59,18 +59,12 @@
         <div><label data-i18n="template"></label><select name="template" id="template"></select></div>
         <div><label data-i18n="model"></label><select name="backend" id="backend"></select></div>
       </div>
-      <label data-i18n="prompt"></label>
-      <textarea name="prompt" id="prompt"></textarea>
-      <div class="row">
-        <div><label data-i18n="seed"></label><input name="seed" type="number" value="-1" min="-1"></div>
-        <div><label data-i18n="steps"></label><input name="steps" type="number" value="12" min="1" max="100"></div>
-      </div>
       <div class="row">
         <div><label data-i18n="inset"></label><input name="inset_mm" type="number" value="2.5" step="0.5" min="0" max="10"></div>
         <div><label data-i18n="bleed"></label><input name="bleed_mm" type="number" value="0" step="0.5" min="0" max="10"></div>
       </div>
       <div class="row">
-        <div><label>DPI</label><input name="dpi" type="number" value="300" min="72" max="600"></div>
+        <div><label>DPI</label><input name="dpi" type="number" value="260" min="72" max="600"></div>
         <div><label class="check"><input type="checkbox" name="guides" value="true"> <span data-i18n="guides"></span></label></div>
       </div>
       <button id="go" data-i18n="go"></button>
@@ -85,13 +79,12 @@ const I18N = {
   en: {
     subtitle: 'Upload a card → the artwork is extended to slab size. Card and label areas stay white.',
     card: 'Card (scan or photo)', template: 'Template', model: 'Model',
-    prompt: 'Prompt (empty = default)', seed: 'Seed (-1 = random)', steps: 'Steps',
     inset: 'Repaint card border (mm)', bleed: 'Bleed (mm)', guides: 'Cut line',
     go: 'Extend', empty: 'Nothing generated yet.', uploaded: 'Uploaded image',
     uploading: 'Uploading…', s_queued: 'Waiting in queue ({n} ahead)', s_queued0: 'Next in queue',
     s_preparing: 'Preparing card…', s_loading: 'Loading AI model (first job only, a few minutes)…',
-    s_encoding: 'Reading the prompt…', s_generating: 'Painting · step {step} of {steps}', s_finishing: 'Saving print files…',
-    eta: '~{t} left', done: 'Done ({s}s, seed {seed})', error: 'Error: ',
+    s_encoding: 'Preparing the AI…', s_generating: 'Painting · step {step} of {steps}', s_finishing: 'Saving print files…',
+    eta: '~{t} left', done: 'Done ({s})', error: 'Error: ',
     print: 'Print ({w} × {h} mm, {dpi} dpi)', preview: 'Preview with card + label',
     dlPdf: 'PDF (print)', dlPng: 'PNG (print)', dlPreview: 'Preview', dlRaw: 'Raw image', dlMask: 'Mask',
     dlCutDxf: 'Cut line DXF', dlCutSvg: 'Cut line SVG', dlPrintCut: 'Print + cut SVG',
@@ -103,13 +96,12 @@ const I18N = {
   de: {
     subtitle: 'Karte hochladen → das Bild wird auf Slab-Größe erweitert. Karten- und Label-Bereich bleiben weiß.',
     card: 'Karte (Scan oder Foto)', template: 'Vorlage', model: 'Modell',
-    prompt: 'Prompt (leer = Standard)', seed: 'Seed (-1 = zufällig)', steps: 'Schritte',
     inset: 'Kartenrand übermalen (mm)', bleed: 'Beschnitt (mm)', guides: 'Schnittlinie',
     go: 'Erweitern', empty: 'Noch nichts generiert.', uploaded: 'Hochgeladenes Bild',
     uploading: 'Hochladen…', s_queued: 'In der Warteschlange ({n} davor)', s_queued0: 'Als Nächstes dran',
     s_preparing: 'Karte wird vorbereitet…', s_loading: 'KI-Modell wird geladen (nur beim ersten Auftrag, einige Minuten)…',
-    s_encoding: 'Prompt wird gelesen…', s_generating: 'Malen · Schritt {step} von {steps}', s_finishing: 'Druckdateien werden gespeichert…',
-    eta: 'noch ~{t}', done: 'Fertig ({s}s, Seed {seed})', error: 'Fehler: ',
+    s_encoding: 'KI wird vorbereitet…', s_generating: 'Malen · Schritt {step} von {steps}', s_finishing: 'Druckdateien werden gespeichert…',
+    eta: 'noch ~{t}', done: 'Fertig ({s})', error: 'Fehler: ',
     print: 'Druck ({w} × {h} mm, {dpi} dpi)', preview: 'Vorschau mit Karte + Label',
     dlPdf: 'PDF (Druck)', dlPng: 'PNG (Druck)', dlPreview: 'Vorschau', dlRaw: 'Rohbild', dlMask: 'Maske',
     dlCutDxf: 'Schnittlinie DXF', dlCutSvg: 'Schnittlinie SVG', dlPrintCut: 'Druck + Schnitt SVG',
@@ -121,13 +113,12 @@ const I18N = {
   fr: {
     subtitle: "Téléversez une carte → l'illustration est étendue au format slab. Les zones de la carte et de l'étiquette restent blanches.",
     card: 'Carte (scan ou photo)', template: 'Modèle de format', model: 'Modèle IA',
-    prompt: 'Prompt (vide = par défaut)', seed: 'Seed (-1 = aléatoire)', steps: 'Étapes',
     inset: 'Repeindre le bord de la carte (mm)', bleed: 'Fond perdu (mm)', guides: 'Trait de coupe',
     go: 'Étendre', empty: 'Rien de généré pour le moment.', uploaded: 'Image téléversée',
     uploading: 'Téléversement…', s_queued: "En file d'attente ({n} avant)", s_queued0: 'Prochain dans la file',
     s_preparing: 'Préparation de la carte…', s_loading: 'Chargement du modèle IA (premier travail seulement, quelques minutes)…',
-    s_encoding: 'Lecture du prompt…', s_generating: 'Peinture · étape {step} sur {steps}', s_finishing: "Enregistrement des fichiers d'impression…",
-    eta: 'encore ~{t}', done: 'Terminé ({s}s, seed {seed})', error: 'Erreur : ',
+    s_encoding: "Préparation de l'IA…", s_generating: 'Peinture · étape {step} sur {steps}', s_finishing: "Enregistrement des fichiers d'impression…",
+    eta: 'encore ~{t}', done: 'Terminé ({s})', error: 'Erreur : ',
     print: 'Impression ({w} × {h} mm, {dpi} dpi)', preview: 'Aperçu avec carte + étiquette',
     dlPdf: 'PDF (impression)', dlPng: 'PNG (impression)', dlPreview: 'Aperçu', dlRaw: 'Image brute', dlMask: 'Masque',
     dlCutDxf: 'Ligne de coupe DXF', dlCutSvg: 'Ligne de coupe SVG', dlPrintCut: 'Impression + coupe SVG',
@@ -139,13 +130,12 @@ const I18N = {
   lb: {
     subtitle: 'Kaart eroplueden → d’Bild gëtt op Slab-Gréisst erweidert. Kaart- a Label-Beräich bleiwe wäiss.',
     card: 'Kaart (Scan oder Foto)', template: 'Schabloun', model: 'Modell',
-    prompt: 'Prompt (eidel = Standard)', seed: 'Seed (-1 = zoufälleg)', steps: 'Schrëtt',
     inset: 'Kaarte-Rand iwwermolen (mm)', bleed: 'Beschnëtt (mm)', guides: 'Schneidlinn',
     go: 'Erweideren', empty: 'Nach näischt generéiert.', uploaded: 'Eropgeluedent Bild',
     uploading: 'Eroplueden…', s_queued: 'An der Waardeschlaang ({n} virdrun)', s_queued0: 'Als Nächst drun',
     s_preparing: 'Kaart gëtt virbereet…', s_loading: 'KI-Modell gëtt gelueden (just beim éischte Job, e puer Minutten)…',
-    s_encoding: 'Prompt gëtt gelies…', s_generating: 'Molen · Schrëtt {step} vun {steps}', s_finishing: 'Drockdateie ginn ofgespäichert…',
-    eta: 'nach ~{t}', done: 'Fäerdeg ({s}s, Seed {seed})', error: 'Feeler: ',
+    s_encoding: 'KI gëtt virbereet…', s_generating: 'Molen · Schrëtt {step} vun {steps}', s_finishing: 'Drockdateie ginn ofgespäichert…',
+    eta: 'nach ~{t}', done: 'Fäerdeg ({s})', error: 'Feeler: ',
     print: 'Drock ({w} × {h} mm, {dpi} dpi)', preview: 'Virschau mat Kaart + Label',
     dlPdf: 'PDF (Drock)', dlPng: 'PNG (Drock)', dlPreview: 'Virschau', dlRaw: 'Rou-Bild', dlMask: 'Mask',
     dlCutDxf: 'Schneidlinn DXF', dlCutSvg: 'Schneidlinn SVG', dlPrintCut: 'Drock + Schnëtt SVG',
@@ -218,7 +208,6 @@ setLang(initialLang());
 fetch('api/config').then(r => r.json()).then(c => {
   $('#template').innerHTML = Object.entries(c.templates).map(([k, v]) => `<option value="${k}">${v}</option>`).join('');
   $('#backend').innerHTML = c.backends.map(b => `<option ${b === c.default_backend ? 'selected' : ''}>${b}</option>`).join('');
-  $('#prompt').placeholder = c.default_prompt;
 });
 $('#f').addEventListener('submit', async e => {
   e.preventDefault();
@@ -235,7 +224,7 @@ $('#f').addEventListener('submit', async e => {
       if (j.status === 'error') throw new Error(errText(j.error));
       if (j.status === 'done') {
         show(id, j.meta);
-        setStatus('done', t('done', { s: Math.round((Date.now() - t0) / 1000), seed: j.meta.seed }), '', 100);
+        setStatus('done', t('done', { s: fmtTime(Math.round((Date.now() - t0) / 1000)) }), '', 100);
         break;
       }
       setStatus(...statusFromJob(j));

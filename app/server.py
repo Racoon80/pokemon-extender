@@ -106,7 +106,7 @@ async def extend(
     steps: int = Form(12),
     inset_mm: float = Form(2.5),
     bleed_mm: float = Form(0.0),
-    dpi: int = Form(300),
+    dpi: int = Form(260),
     guides: bool = Form(False),
 ):
     if template not in list_layouts() or backend not in backends.available():

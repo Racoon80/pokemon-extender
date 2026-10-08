@@ -4,7 +4,7 @@ Extends the artwork of a Pokémon card (scan or photo) with AI outpainting (FLUX
 size of a **PSA slab**, so it can be printed and placed in an acrylic display case.
 **The card area and the label area stay white.**
 
-Output: `print.pdf` / `print.png` at exact physical size (300 dpi by default), plus a
+Output: `print.pdf` / `print.png` at exact physical size (260 dpi by default), plus a
 `preview.jpg` showing the card and a label in place.
 
 Web UI in **English, Deutsch, Français and Lëtzebuergesch** (follows the browser language,

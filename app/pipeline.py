@@ -29,7 +29,7 @@ class Options:
     context: str = "art"     # "art": the model only sees the illustration crop; "card": the whole card
     inset_mm: float = 2.5    # context="card": the card's own frame gets repainted
     bleed_mm: float = 0.0
-    dpi: int = 300
+    dpi: int = 260
     guides: bool = False
     detect_card: bool = True
 
