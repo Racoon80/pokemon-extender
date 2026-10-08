@@ -1,4 +1,5 @@
-"""Cut line for print-then-cut (Bambu Suite and other cutters): the slab outline, in millimetres.
+"""Cut lines for print-then-cut (Bambu Suite and other cutters), in millimetres: the slab outline
+plus the card and label windows, cut along the edge of their white areas so no white is left over.
 
 Every file uses the full sheet (bleed included) as its coordinate system with the origin in the
 top-left corner of print.png, so the cut line lands on the printed image without manual alignment.
@@ -36,9 +37,14 @@ def _svg(layout: Layout, body: str) -> str:
             f'width="{_f(w)}mm" height="{_f(h)}mm" viewBox="0 0 {_f(w)} {_f(h)}">\n{body}</svg>\n')
 
 
+def cut_rects(layout: Layout) -> dict[str, Rect]:
+    m = layout.white_margin_mm
+    return {"outline": layout.trim, "card": layout.card.grow(m), "label": layout.label.grow(m)}
+
+
 def _cut_element(layout: Layout) -> str:
-    return (f'  <path id="cut" d="{_svg_path(layout.trim)}" fill="none" stroke="{STROKE}" '
-            f'stroke-width="0.1"/>\n')
+    return "".join(f'  <path id="cut-{name}" d="{_svg_path(r)}" fill="none" stroke="{STROKE}" '
+                   f'stroke-width="0.1"/>\n' for name, r in cut_rects(layout).items())
 
 
 def write_svg(layout: Layout, path: Path) -> None:
@@ -53,11 +59,10 @@ def write_print_svg(layout: Layout, png: Path, path: Path) -> None:
     path.write_text(_svg(layout, image + _cut_element(layout)))
 
 
-def write_dxf(layout: Layout, path: Path) -> None:
-    """DXF R12, one closed polyline with arc bulges, units mm. DXF's y axis points up."""
-    r, h = layout.trim, layout.total_h_mm
+def _dxf_polyline(r: Rect, sheet_h: float) -> list[str]:
+    """One closed polyline with arc bulges. DXF's y axis points up."""
     x0, x1 = r.x, r.x + r.w
-    y0, y1 = h - (r.y + r.h), h - r.y
+    y0, y1 = sheet_h - (r.y + r.h), sheet_h - r.y
     k = min(r.radius, r.w / 2, r.h / 2)
     bulge = math.tan(math.radians(90) / 4)  # quarter circle, counter-clockwise
     if k > 0:
@@ -65,17 +70,23 @@ def write_dxf(layout: Layout, path: Path) -> None:
                (x1 - k, y1, 0), (x0 + k, y1, bulge), (x0, y1 - k, 0), (x0, y0 + k, bulge)]
     else:
         pts = [(x0, y0, 0), (x1, y0, 0), (x1, y1, 0), (x0, y1, 0)]
-
-    out = ["0", "SECTION", "2", "HEADER", "9", "$ACADVER", "1", "AC1009", "9", "$INSUNITS", "70", "4",
-           "9", "$EXTMIN", "10", "0", "20", "0", "9", "$EXTMAX", "10", _f(layout.total_w_mm), "20", _f(h),
-           "0", "ENDSEC",
-           "0", "SECTION", "2", "ENTITIES",
-           "0", "POLYLINE", "8", "CUT", "62", "1", "66", "1", "70", "1", "10", "0", "20", "0", "30", "0"]
+    out = ["0", "POLYLINE", "8", "CUT", "62", "1", "66", "1", "70", "1", "10", "0", "20", "0", "30", "0"]
     for x, y, b in pts:
         out += ["0", "VERTEX", "8", "CUT", "10", _f(x), "20", _f(y), "30", "0"]
         if b:
             out += ["42", f"{b:.8f}"]
-    out += ["0", "SEQEND", "8", "CUT", "0", "ENDSEC", "0", "EOF"]
+    return out + ["0", "SEQEND", "8", "CUT"]
+
+
+def write_dxf(layout: Layout, path: Path) -> None:
+    """DXF R12, units mm, one closed polyline per cut."""
+    h = layout.total_h_mm
+    out = ["0", "SECTION", "2", "HEADER", "9", "$ACADVER", "1", "AC1009", "9", "$INSUNITS", "70", "4",
+           "9", "$EXTMIN", "10", "0", "20", "0", "9", "$EXTMAX", "10", _f(layout.total_w_mm), "20", _f(h),
+           "0", "ENDSEC", "0", "SECTION", "2", "ENTITIES"]
+    for r in cut_rects(layout).values():
+        out += _dxf_polyline(r, h)
+    out += ["0", "ENDSEC", "0", "EOF"]
     path.write_text("\n".join(out) + "\n")
 
 

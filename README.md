@@ -78,17 +78,17 @@ drop in another `*.json` to add a format.
 | Build stops with `401` / `gated repo` | FLUX licence not accepted, or wrong token in `.env` |
 
 ## Print then cut (Bambu Lab cutting module, other cutters)
-Every job also writes the slab outline as a cut line, in millimetres, with the same origin
-(top left) as `print.png`:
+Every job also writes the cut lines — the slab outline plus the card and label windows (cut
+along the edge of the white areas) — in millimetres, with the same origin (top left) as `print.png`:
 
 | File | Use |
 |---|---|
-| `cut.dxf` | Cut line only. Recommended for Bambu Suite — DXF imports at true size |
-| `cut.svg` | Cut line only (red, `0.1 mm`) |
-| `print-cut.svg` | Print image and cut line in one file, already aligned |
+| `cut.dxf` | Cut lines only. Recommended for Bambu Suite — DXF imports at true size |
+| `cut.svg` | Cut lines only (red, `0.1 mm`) |
+| `print-cut.svg` | Print image and cut lines in one file, already aligned |
 
 On Bambu Lab printers (H2D/H2S with the cutting module) print-then-cut runs in **Bambu Suite**:
-import the print image and the cut line, set the cut line to *Basic Cut*, check the size in mm.
+import the print image and **one** of the cut files (`cut.dxf`), set it to *Basic Cut*, check the size in mm.
 Use **2 mm bleed** so the blade never runs along the edge of white paper.
 
 ## CLI
