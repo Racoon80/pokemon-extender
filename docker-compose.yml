@@ -19,7 +19,7 @@ services:
       DEFAULT_BACKEND: flux
       # 12 GB VRAM: Q5_K_S (8.3 GB) fits. Out of memory → Q4_K_S (6.8 GB).
       FLUX_GGUF_FILE: flux1-fill-dev-Q5_K_S.gguf
-      TORCH_DTYPE: auto                # bf16 on RTX 30xx and newer, fp16 on older cards
+      TORCH_DTYPE: auto                # bf16 on RTX 30xx and newer, float32 on older cards
       CPU_OFFLOAD: auto                # switches on below 12 GB free VRAM
       PRELOAD: "1"                     # load the model at start (first start: ~15 GB download)
     volumes:

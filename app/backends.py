@@ -11,10 +11,11 @@ from PIL import Image
 
 log = logging.getLogger("extender")
 
+# FLUX reads negations ("no frame") as requests, and "card" makes it paint cards: describe only what is wanted.
 DEFAULT_PROMPT = (
-    "seamless continuation of the trading card illustration beyond its edges, same art style, "
-    "same colours and lighting, detailed background scenery, no text, no letters, no border, "
-    "no frame, no card, no logo"
+    "A seamless painterly anime landscape illustration that fills the entire image edge to edge. "
+    "The scenery continues naturally in every direction with the same art style, colours and lighting. "
+    "Highly detailed."
 )
 NEGATIVE_PROMPT = "text, letters, watermark, logo, frame, border, card, blurry, low quality"
 
@@ -49,8 +50,9 @@ def _torch_dtype():
     want = os.environ.get("TORCH_DTYPE", "auto")
     if want != "auto":
         return getattr(torch, want)
-    # Turing (Quadro RTX 8000, sm_75) has no native bf16; Ampere and newer do.
-    return torch.bfloat16 if torch.cuda.get_device_capability()[0] >= 8 else torch.float16
+    # FLUX overflows to NaN in fp16 (black images). Ampere and newer have native bf16; on older
+    # cards (Turing, e.g. Quadro RTX 8000) emulated bf16 is slower than plain fp32.
+    return torch.bfloat16 if torch.cuda.get_device_capability()[0] >= 8 else torch.float32
 
 
 def _place(pipe, vram_needed_gb: float):

@@ -25,11 +25,17 @@ class Options:
     prompt: str = ""
     seed: int = -1
     steps: int = 40
-    inset_mm: float = 2.5    # the card's own frame gets repainted so the art, not the border, continues
+    context: str = "art"     # "art": the model only sees the illustration crop; "card": the whole card
+    inset_mm: float = 2.5    # context="card": the card's own frame gets repainted
     bleed_mm: float = 0.0
     dpi: int = 300
     guides: bool = False
     detect_card: bool = True
+
+
+# Illustration area as fractions of the card (x0, y0, x1, y1). Below the name/HP bar and above the
+# attack text on both regular and full-art cards, inside the frame.
+ART_BOX = (0.07, 0.10, 0.93, 0.50)
 
 
 def _round_to(v: float, m: int) -> int:
@@ -48,16 +54,28 @@ def _gen_canvas(layout: Layout, card: Image.Image, opts: Options, multiple: int,
     sx, sy = gw / layout.total_w_mm, gh / layout.total_h_mm
 
     x0, y0, x1, y1, _ = layout.card.to_px(sx, sy)
-    card_px = card.resize((x1 - x0, y1 - y0), Image.LANCZOS)
-
-    # Unknown area starts as the card's average colour, a calm prior for the model.
-    avg = card_px.resize((1, 1), Image.BOX).getpixel((0, 0))
-    init = Image.new("RGB", (gw, gh), avg)
-    init.paste(card_px, (x0, y0))
-
     mask = Image.new("L", (gw, gh), 255)
-    keep = Rect(layout.card.x, layout.card.y, layout.card.w, layout.card.h).grow(-opts.inset_mm)
-    _rounded(ImageDraw.Draw(mask), keep, sx, sy, fill=0)
+    draw = ImageDraw.Draw(mask)
+
+    if opts.context == "art":
+        # A whole card (frame, title, attack text) makes the model paint a card or a slab around it.
+        # The card area ends up white anyway, so show it only the illustration, card-wide and centred.
+        bx0, by0, bx1, by1 = ART_BOX
+        art = card.crop((round(bx0 * card.width), round(by0 * card.height),
+                         round(bx1 * card.width), round(by1 * card.height)))
+        aw = x1 - x0
+        ah = min(y1 - y0, round(aw * art.height / art.width))
+        context, cx, cy = art.resize((aw, ah), Image.LANCZOS), x0, y0 + (y1 - y0 - ah) // 2
+        pad = round(1.0 * sx)  # 1 mm soft seam
+        draw.rectangle((cx + pad, cy + pad, cx + aw - pad, cy + ah - pad), fill=0)
+    else:
+        context, cx, cy = card.resize((x1 - x0, y1 - y0), Image.LANCZOS), x0, y0
+        keep = Rect(layout.card.x, layout.card.y, layout.card.w, layout.card.h).grow(-opts.inset_mm)
+        _rounded(draw, keep, sx, sy, fill=0)
+
+    avg = context.resize((1, 1), Image.BOX).getpixel((0, 0))
+    init = Image.new("RGB", (gw, gh), avg)
+    init.paste(context, (cx, cy))
     mask = mask.filter(ImageFilter.GaussianBlur(2))
     return init, mask, (sx, sy)
 

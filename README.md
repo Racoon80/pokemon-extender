@@ -60,7 +60,7 @@ drop in another `*.json` to add a format.
 |---|---|
 | `DEFAULT_BACKEND` | `flux` (default) / `sdxl` / `preview` (CPU, no model, layout tests only) |
 | `FLUX_GGUF_FILE` | `flux1-fill-dev-Q5_K_S.gguf` (8.3 GB). Less VRAM → `…-Q4_K_S.gguf` (6.8 GB); better quality → `…-Q8_0.gguf` (12.7 GB, > 16 GB VRAM) |
-| `TORCH_DTYPE` | `auto` = bf16 on Ampere (RTX 30xx) and newer, fp16 on older cards. Black images → `float32` |
+| `TORCH_DTYPE` | `auto` = bf16 on Ampere (RTX 30xx) and newer, float32 on older cards (fp16 makes FLUX overflow into black images) |
 | `CPU_OFFLOAD` | `auto` switches on below 12 GB free VRAM |
 | `MAX_UPLOAD_MB` / `MAX_PENDING` | Upload limit (25 MB) and max. jobs in the queue (5) |
 | `OUTPUT_TTL_HOURS` | Results are deleted after 72 h |
@@ -69,7 +69,7 @@ drop in another `*.json` to add a format.
 | Problem | Fix |
 |---|---|
 | `CUDA out of memory` | `FLUX_GGUF_FILE: flux1-fill-dev-Q4_K_S.gguf` |
-| Black image | `TORCH_DTYPE: float32` |
+| Black image | `TORCH_DTYPE: float32` (fp16 overflows) |
 | `401` / `gated repo` | FLUX licence not accepted, or wrong token |
 
 ## CLI
