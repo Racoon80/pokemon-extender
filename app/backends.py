@@ -17,7 +17,6 @@ DEFAULT_PROMPT = (
     "The scenery continues naturally in every direction with the same art style, colours and lighting. "
     "Highly detailed."
 )
-NEGATIVE_PROMPT = "text, letters, watermark, logo, frame, border, card, blurry, low quality"
 
 
 def _no_progress(stage: str, step: int = 0, steps: int = 0) -> None:
@@ -84,11 +83,10 @@ def _place(pipe, vram_needed_gb: float):
 
 
 class FluxFillBackend(Backend):
-    """FLUX.1 Fill [dev], quantised so it fits 12 GB VRAM and ~15 GB of downloads.
+    """FLUX.1 Fill [dev], quantised so it fits 12 GB VRAM (model files: app/models.py).
 
     Transformer: GGUF (Q5_K_S ≈ 8.3 GB). T5: nf4 (≈ 6.3 GB), loaded only while a new prompt
     is encoded and then dropped, so it never sits on the GPU next to the transformer.
-    The original repo is gated: HF_TOKEN must belong to an account that accepted the licence.
     """
     name = "flux"
     multiple = 16
@@ -97,23 +95,17 @@ class FluxFillBackend(Backend):
     def __init__(self):
         import torch
         from diffusers import FluxFillPipeline, FluxTransformer2DModel, GGUFQuantizationConfig
-        from huggingface_hub import hf_hub_download, snapshot_download
 
-        model = os.environ.get("FLUX_MODEL", "black-forest-labs/FLUX.1-Fill-dev")
-        gguf_repo = os.environ.get("FLUX_GGUF_REPO", "YarvixPA/FLUX.1-Fill-dev-GGUF")
-        gguf_file = os.environ.get("FLUX_GGUF_FILE", "flux1-fill-dev-Q5_K_S.gguf")
-        self.t5_repo = os.environ.get("FLUX_T5_REPO", "diffusers/FLUX.1-dev-bnb-4bit")
+        from . import models
+
         self.dtype = _torch_dtype()
         self.torch = torch
         self._embeds: dict[str, tuple] = {}
 
-        # Only the small parts of the original repo; it also holds 24 GB transformer + 9.5 GB T5.
-        base = snapshot_download(model, allow_patterns=[
-            "model_index.json", "scheduler/*", "text_encoder/*", "tokenizer/*", "tokenizer_2/*",
-            "vae/*", "transformer/config.json"])
-        log.info("Loading %s/%s (%s)", gguf_repo, gguf_file, self.dtype)
+        base = models.base_dir()
+        log.info("Loading %s/%s (%s)", models.GGUF_REPO, models.GGUF_FILE, self.dtype)
         transformer = FluxTransformer2DModel.from_single_file(
-            hf_hub_download(gguf_repo, gguf_file),
+            models.gguf_path(),
             quantization_config=GGUFQuantizationConfig(compute_dtype=self.dtype),
             config=base, subfolder="transformer", torch_dtype=self.dtype)
         pipe = FluxFillPipeline.from_pretrained(base, transformer=transformer, text_encoder_2=None,
@@ -126,8 +118,10 @@ class FluxFillBackend(Backend):
             return self._embeds[prompt]
         progress("encoding")
         from transformers import T5EncoderModel
+
+        from . import models
         torch = self.torch
-        t5 = T5EncoderModel.from_pretrained(self.t5_repo, subfolder="text_encoder_2", torch_dtype=self.dtype)
+        t5 = T5EncoderModel.from_pretrained(models.t5_dir(), subfolder="text_encoder_2", torch_dtype=self.dtype)
         for m in t5.modules():  # repo is saved with bf16 compute, which Turing cannot do
             if hasattr(m, "compute_dtype"):
                 m.compute_dtype = self.dtype
@@ -157,31 +151,7 @@ class FluxFillBackend(Backend):
         ).images[0]
 
 
-class SdxlInpaintBackend(Backend):
-    """SDXL inpainting — lighter (~10 GB), weaker at large outpaints. Fallback when FLUX does not fit."""
-    name = "sdxl"
-    megapixels = 1.0
-
-    def __init__(self):
-        import torch
-        from diffusers import AutoPipelineForInpainting
-        model = os.environ.get("SDXL_MODEL", "diffusers/stable-diffusion-xl-1.0-inpainting-0.1")
-        log.info("Loading %s", model)
-        self.pipe = _place(AutoPipelineForInpainting.from_pretrained(
-            model, torch_dtype=torch.float16, variant="fp16"), 12)
-        self.torch = torch
-
-    def generate(self, image, mask, prompt, seed, steps, progress=_no_progress):
-        progress("generating", 0, steps)
-        return self.pipe(
-            callback_on_step_end=self._step_callback(progress, steps),
-            prompt=prompt, negative_prompt=NEGATIVE_PROMPT, image=image, mask_image=mask,
-            width=image.width, height=image.height, strength=0.99, guidance_scale=7.0,
-            num_inference_steps=steps, generator=self.torch.Generator("cpu").manual_seed(seed),
-        ).images[0]
-
-
-_REGISTRY = {"flux": FluxFillBackend, "sdxl": SdxlInpaintBackend, "preview": PreviewBackend}
+_REGISTRY = {"flux": FluxFillBackend, "preview": PreviewBackend}
 _loaded: dict[str, Backend] = {}
 _load_lock = threading.Lock()
 

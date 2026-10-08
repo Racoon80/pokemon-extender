@@ -55,10 +55,7 @@
       <label data-i18n="card"></label>
       <input type="file" name="file" id="file" accept="image/*" required>
       <img id="thumb" alt="">
-      <div class="row">
-        <div><label data-i18n="template"></label><select name="template" id="template"></select></div>
-        <div><label data-i18n="model"></label><select name="backend" id="backend"></select></div>
-      </div>
+      <label data-i18n="template"></label><select name="template" id="template"></select>
       <div class="row">
         <div><label data-i18n="inset"></label><input name="inset_mm" type="number" value="2.5" step="0.5" min="0" max="10"></div>
         <div><label data-i18n="bleed"></label><input name="bleed_mm" type="number" value="0" step="0.5" min="0" max="10"></div>
@@ -78,7 +75,7 @@
 const I18N = {
   en: {
     subtitle: 'Upload a card → the artwork is extended to slab size. Card and label areas stay white.',
-    card: 'Card (scan or photo)', template: 'Template', model: 'Model',
+    card: 'Card (scan or photo)', template: 'Template',
     inset: 'Repaint card border (mm)', bleed: 'Bleed (mm)', guides: 'Cut line',
     go: 'Extend', empty: 'Nothing generated yet.', uploaded: 'Uploaded image',
     uploading: 'Uploading…', s_queued: 'Waiting in queue ({n} ahead)', s_queued0: 'Next in queue',
@@ -95,7 +92,7 @@ const I18N = {
   },
   de: {
     subtitle: 'Karte hochladen → das Bild wird auf Slab-Größe erweitert. Karten- und Label-Bereich bleiben weiß.',
-    card: 'Karte (Scan oder Foto)', template: 'Vorlage', model: 'Modell',
+    card: 'Karte (Scan oder Foto)', template: 'Vorlage',
     inset: 'Kartenrand übermalen (mm)', bleed: 'Beschnitt (mm)', guides: 'Schnittlinie',
     go: 'Erweitern', empty: 'Noch nichts generiert.', uploaded: 'Hochgeladenes Bild',
     uploading: 'Hochladen…', s_queued: 'In der Warteschlange ({n} davor)', s_queued0: 'Als Nächstes dran',
@@ -112,7 +109,7 @@ const I18N = {
   },
   fr: {
     subtitle: "Téléversez une carte → l'illustration est étendue au format slab. Les zones de la carte et de l'étiquette restent blanches.",
-    card: 'Carte (scan ou photo)', template: 'Modèle de format', model: 'Modèle IA',
+    card: 'Carte (scan ou photo)', template: 'Modèle de format',
     inset: 'Repeindre le bord de la carte (mm)', bleed: 'Fond perdu (mm)', guides: 'Trait de coupe',
     go: 'Étendre', empty: 'Rien de généré pour le moment.', uploaded: 'Image téléversée',
     uploading: 'Téléversement…', s_queued: "En file d'attente ({n} avant)", s_queued0: 'Prochain dans la file',
@@ -129,7 +126,7 @@ const I18N = {
   },
   lb: {
     subtitle: 'Kaart eroplueden → d’Bild gëtt op Slab-Gréisst erweidert. Kaart- a Label-Beräich bleiwe wäiss.',
-    card: 'Kaart (Scan oder Foto)', template: 'Schabloun', model: 'Modell',
+    card: 'Kaart (Scan oder Foto)', template: 'Schabloun',
     inset: 'Kaarte-Rand iwwermolen (mm)', bleed: 'Beschnëtt (mm)', guides: 'Schneidlinn',
     go: 'Erweideren', empty: 'Nach näischt generéiert.', uploaded: 'Eropgeluedent Bild',
     uploading: 'Eroplueden…', s_queued: 'An der Waardeschlaang ({n} virdrun)', s_queued0: 'Als Nächst drun',
@@ -206,8 +203,8 @@ $('#file').addEventListener('change', e => {
 setLang(initialLang());
 
 fetch('api/config').then(r => r.json()).then(c => {
-  $('#template').innerHTML = Object.entries(c.templates).map(([k, v]) => `<option value="${k}">${v}</option>`).join('');
-  $('#backend').innerHTML = c.backends.map(b => `<option ${b === c.default_backend ? 'selected' : ''}>${b}</option>`).join('');
+  $('#template').innerHTML = Object.entries(c.templates)
+    .map(([k, v]) => `<option value="${k}" ${k === c.default_template ? 'selected' : ''}>${v}</option>`).join('');
 });
 $('#f').addEventListener('submit', async e => {
   e.preventDefault();

@@ -26,21 +26,26 @@ Needs an NVIDIA GPU with **≥ 12 GB VRAM**.
    cp .env.example .env      # put your HF_TOKEN in
    docker compose up -d --build
    ```
+   The build downloads the AI model (**~15 GB**: GGUF transformer 8.3 GB + T5 nf4 6.3 GB +
+   CLIP/VAE) into the image. The token is passed as a build secret and is not stored in the
+   image; the running container needs no internet access. Code updates (`git pull` + the same
+   command) reuse the model layer and do not download it again.
 4. Open `http://localhost:8000`
 
    The port only listens on the local machine (`127.0.0.1`). For your LAN, change it to
    `"8000:8000"` in `docker-compose.yml`. There is **no login** — never expose it to the internet.
 
-The first start downloads **~15 GB** into `./data` (GGUF transformer 8.3 GB + T5 nf4 6.3 GB +
-CLIP/VAE). Follow it with `docker logs -f pokemon-extender`.
+After a start the model needs a few minutes to load into the GPU; the progress bar shows it.
 
 ## How it works
 1. Find the card in the photo, straighten it, crop to 63:88 (`app/card.py`).
 2. Place it on a slab-sized sheet (measurements from `templates/*.json`, all in mm).
 3. Mask = everything except the card. The card's own border (`inset_mm`, 2.5 mm by default)
    is repainted too, so the **illustration** continues rather than the card frame.
-4. Outpaint on the GPU (`app/backends.py`). The T5 text encoder is only loaded briefly to encode
-   a new prompt and freed again, so it never shares VRAM with the transformer.
+4. Outpaint on the GPU with FLUX.1 Fill (`app/backends.py`, 12 steps). Only the card's
+   illustration is shown to the model, at its exact place and size, so the scenery lines up with
+   the real card. The T5 text encoder is only loaded briefly and freed again, so it never shares
+   VRAM with the transformer.
 5. Scale to print resolution and paint the card and label areas white (+ `white_margin_mm`).
 
 ## Slab formats (`templates/*.json`)
@@ -59,8 +64,7 @@ drop in another `*.json` to add a format.
 ## Settings (`docker-compose.yml`)
 | Variable | |
 |---|---|
-| `DEFAULT_BACKEND` | `flux` (default) / `sdxl` / `preview` (CPU, no model, layout tests only) |
-| `FLUX_GGUF_FILE` | `flux1-fill-dev-Q5_K_S.gguf` (8.3 GB). Less VRAM → `…-Q4_K_S.gguf` (6.8 GB); better quality → `…-Q8_0.gguf` (12.7 GB, > 16 GB VRAM) |
+| `FLUX_GGUF_FILE` (build arg) | `flux1-fill-dev-Q5_K_S.gguf` (8.3 GB). Less VRAM → `…-Q4_K_S.gguf` (6.8 GB); better quality → `…-Q8_0.gguf` (12.7 GB, > 16 GB VRAM). Rebuild after changing it |
 | `TORCH_DTYPE` | `auto` = bf16 on Ampere (RTX 30xx) and newer, float32 on older cards (fp16 makes FLUX overflow into black images) |
 | `CPU_OFFLOAD` | `auto` switches on below 12 GB free VRAM |
 | `MAX_UPLOAD_MB` / `MAX_PENDING` | Upload limit (25 MB) and max. jobs in the queue (5) |
@@ -69,9 +73,9 @@ drop in another `*.json` to add a format.
 ## Troubleshooting
 | Problem | Fix |
 |---|---|
-| `CUDA out of memory` | `FLUX_GGUF_FILE: flux1-fill-dev-Q4_K_S.gguf` |
+| `CUDA out of memory` | build arg `FLUX_GGUF_FILE: flux1-fill-dev-Q4_K_S.gguf`, then `docker compose up -d --build` |
 | Black image | `TORCH_DTYPE: float32` (fp16 overflows) |
-| `401` / `gated repo` | FLUX licence not accepted, or wrong token |
+| Build stops with `401` / `gated repo` | FLUX licence not accepted, or wrong token in `.env` |
 
 ## Print then cut (Bambu Lab cutting module, other cutters)
 Every job also writes the slab outline as a cut line, in millimetres, with the same origin

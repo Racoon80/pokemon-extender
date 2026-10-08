@@ -56,6 +56,7 @@ def config():
         "templates": {n: load_layout(n).name for n in list_layouts()},
         "backends": backends.available(),
         "default_backend": DEFAULT_BACKEND,
+        "default_template": "psa",
         "default_prompt": backends.DEFAULT_PROMPT,
     }
 

@@ -1,4 +1,4 @@
-"""python -m app.cli kaart.jpg -o out/ [--backend flux|sdxl|preview]"""
+"""python -m app.cli card.jpg -o out/ [--template psa|bgs] [--backend flux|preview]"""
 from __future__ import annotations
 
 import argparse
