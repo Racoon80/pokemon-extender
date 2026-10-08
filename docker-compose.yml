@@ -1,9 +1,9 @@
-# Pokemon-Extender — fir eng NVIDIA-Kaart mat 12 GB VRAM
+# Pokemon-Extender — for an NVIDIA GPU with 12 GB VRAM or more
 #
-# Viraussetzungen: Docker + NVIDIA-Treiber + nvidia-container-toolkit
-#   (Windows: Docker Desktop mat WSL2, de GPU-Support ass do dran)
+# Needs: Docker + NVIDIA driver + nvidia-container-toolkit
+#   (Windows: Docker Desktop with the WSL2 backend, GPU support is built in)
 # Start:   docker compose up -d --build
-# Web-UI:  http://localhost:8000
+# Web UI:  http://localhost:8000
 services:
   pokemon-extender:
     build: .
@@ -11,20 +11,20 @@ services:
     container_name: pokemon-extender
     restart: unless-stopped
     ports:
-      # Nëmmen op dësem Computer. Fir am LAN: "8000:8000" — et gëtt kee Login,
-      # also net am Internet opmaachen (oder e Reverse-Proxy mat Auth dovir).
+      # This computer only. For your LAN use "8000:8000" — there is no login,
+      # so never expose it to the internet (or put a reverse proxy with auth in front).
       - "127.0.0.1:8000:8000"
-    env_file: .env                     # HF_TOKEN=… (kuck .env.example)
+    env_file: .env                     # HF_TOKEN=… (see .env.example)
     environment:
       DEFAULT_BACKEND: flux
-      # 12 GB VRAM: Q5_K_S (8,3 GB) passt. Leeft et aus dem Späicher → Q4_K_S (6,8 GB).
+      # 12 GB VRAM: Q5_K_S (8.3 GB) fits. Out of memory → Q4_K_S (6.8 GB).
       FLUX_GGUF_FILE: flux1-fill-dev-Q5_K_S.gguf
-      TORCH_DTYPE: auto                # bf16 ab RTX 30xx, fp16 op méi alen Kaarten
-      CPU_OFFLOAD: auto                # schalt sech bei < 12 GB fräi VRAM an
-      PRELOAD: "1"                     # Modell beim Start lueden (éischte Start: ~15 GB Download)
+      TORCH_DTYPE: auto                # bf16 on RTX 30xx and newer, fp16 on older cards
+      CPU_OFFLOAD: auto                # switches on below 12 GB free VRAM
+      PRELOAD: "1"                     # load the model at start (first start: ~15 GB download)
     volumes:
-      - ./data:/data                   # Modell-Cache + Resultater
-      - ./templates:/srv/templates     # Slab-Mooss, ouni Rebuild z'änneren
+      - ./data:/data                   # model cache + results
+      - ./templates:/srv/templates     # slab measurements, editable without a rebuild
     shm_size: 2gb
     deploy:
       resources:

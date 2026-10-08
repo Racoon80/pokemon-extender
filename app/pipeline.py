@@ -84,7 +84,7 @@ def run(card_img: Image.Image, opts: Options, out_dir: Path) -> dict:
     init, mask, _ = _gen_canvas(layout, card, opts, backend.multiple, backend.megapixels)
     mask.save(out_dir / "mask.png")
     t0 = time.time()
-    log.info("%s: %dx%d, seed %d, %d Schrëtt", backend.name, *init.size, seed, opts.steps)
+    log.info("%s: %dx%d, seed %d, %d steps", backend.name, *init.size, seed, opts.steps)
     raw = backend.generate(init, mask, prompt, seed, opts.steps)
     gen_seconds = round(time.time() - t0, 1)
     raw.save(out_dir / "raw.png")

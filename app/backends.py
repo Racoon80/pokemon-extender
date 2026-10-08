@@ -58,7 +58,7 @@ def _place(pipe, vram_needed_gb: float):
     offload = os.environ.get("CPU_OFFLOAD", "auto")
     free_gb = torch.cuda.mem_get_info()[0] / 1024**3
     if offload == "1" or (offload == "auto" and free_gb < vram_needed_gb):
-        log.info("CPU-Offload un (%.1f GB fräi, %.0f GB gebraucht)", free_gb, vram_needed_gb)
+        log.info("CPU offload on (%.1f GB free, %.0f GB needed)", free_gb, vram_needed_gb)
         pipe.enable_model_cpu_offload()
     else:
         pipe.to("cuda")
@@ -94,7 +94,7 @@ class FluxFillBackend(Backend):
         base = snapshot_download(model, allow_patterns=[
             "model_index.json", "scheduler/*", "text_encoder/*", "tokenizer/*", "tokenizer_2/*",
             "vae/*", "transformer/config.json"])
-        log.info("Lueden %s/%s (%s)", gguf_repo, gguf_file, self.dtype)
+        log.info("Loading %s/%s (%s)", gguf_repo, gguf_file, self.dtype)
         transformer = FluxTransformer2DModel.from_single_file(
             hf_hub_download(gguf_repo, gguf_file),
             quantization_config=GGUFQuantizationConfig(compute_dtype=self.dtype),
@@ -146,7 +146,7 @@ class SdxlInpaintBackend(Backend):
         import torch
         from diffusers import AutoPipelineForInpainting
         model = os.environ.get("SDXL_MODEL", "diffusers/stable-diffusion-xl-1.0-inpainting-0.1")
-        log.info("Lueden %s", model)
+        log.info("Loading %s", model)
         self.pipe = _place(AutoPipelineForInpainting.from_pretrained(
             model, torch_dtype=torch.float16, variant="fp16"), 12)
         self.torch = torch
@@ -170,7 +170,7 @@ def available() -> list[str]:
 
 def get_backend(name: str) -> Backend:
     if name not in _REGISTRY:
-        raise ValueError(f"Onbekannte Backend '{name}' ({', '.join(_REGISTRY)})")
+        raise ValueError(f"Unknown backend '{name}' ({', '.join(_REGISTRY)})")
     with _load_lock:
         if name not in _loaded:
             # One GPU model at a time: drop the other one before loading.

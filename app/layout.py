@@ -65,13 +65,13 @@ def _rect(d: dict) -> Rect:
 def load_layout(name: str) -> Layout:
     path = TEMPLATE_DIR / f"{name}.json"
     if not path.is_file():
-        raise ValueError(f"Schabloun '{name}' gëtt et net ({', '.join(list_layouts())})")
+        raise ValueError(f"Template '{name}' does not exist ({', '.join(list_layouts())})")
     d = json.loads(path.read_text())
     layout = Layout(d["name"], d["width_mm"], d["height_mm"], d.get("corner_radius_mm", 0.0),
                     _rect(d["card"]), _rect(d["label"]), d.get("white_margin_mm", 0.0))
     for part in (layout.card, layout.label):
         if part.x < 0 or part.y < 0 or part.x + part.w > layout.width_mm or part.y + part.h > layout.height_mm:
-            raise ValueError(f"{path.name}: e Beräich läit baussent dem Blat")
+            raise ValueError(f"{path.name}: an area lies outside the sheet")
     return layout
 
 

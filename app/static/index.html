@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="lb">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -28,42 +28,129 @@
   .dl { display:flex; flex-wrap:wrap; gap:8px; margin-top:14px; }
   .dl a { padding:6px 10px; border:1px solid var(--line); border-radius:6px; color:var(--text); text-decoration:none; font-size:13px; }
   .empty { color:var(--muted); text-align:center; padding:60px 10px; }
+  .top { display:flex; justify-content:space-between; align-items:start; gap:12px; }
+  .top select { width:auto; padding:4px 6px; font-size:13px; }
 </style>
 </head>
 <body>
 <main>
   <section>
-    <h1>Pokémon Extender</h1>
-    <p class="sub">Kaart eropluede → Bild gëtt op Slab-Gréisst erweidert. Kaart- a Label-Beräich bleiwe wäiss.</p>
+    <div class="top">
+      <h1>Pokémon Extender</h1>
+      <select id="lang" aria-label="Language">
+        <option value="en">English</option><option value="de">Deutsch</option>
+        <option value="fr">Français</option><option value="lb">Lëtzebuergesch</option>
+      </select>
+    </div>
+    <p class="sub" data-i18n="subtitle"></p>
     <form class="panel" id="f">
-      <label>Kaart (Scan oder Foto)</label>
+      <label data-i18n="card"></label>
       <input type="file" name="file" accept="image/*" required>
       <div class="row">
-        <div><label>Schabloun</label><select name="template" id="template"></select></div>
-        <div><label>Modell</label><select name="backend" id="backend"></select></div>
+        <div><label data-i18n="template"></label><select name="template" id="template"></select></div>
+        <div><label data-i18n="model"></label><select name="backend" id="backend"></select></div>
       </div>
-      <label>Prompt (eidel = Standard)</label>
+      <label data-i18n="prompt"></label>
       <textarea name="prompt" id="prompt"></textarea>
       <div class="row">
-        <div><label>Seed (-1 = zoufälleg)</label><input name="seed" type="number" value="-1"></div>
-        <div><label>Schrëtt</label><input name="steps" type="number" value="40" min="1" max="100"></div>
+        <div><label data-i18n="seed"></label><input name="seed" type="number" value="-1" min="-1"></div>
+        <div><label data-i18n="steps"></label><input name="steps" type="number" value="40" min="1" max="100"></div>
       </div>
       <div class="row">
-        <div><label>Kaarte-Rand iwwermolen (mm)</label><input name="inset_mm" type="number" value="2.5" step="0.5" min="0" max="10"></div>
-        <div><label>Beschnëtt / Bleed (mm)</label><input name="bleed_mm" type="number" value="0" step="0.5" min="0" max="10"></div>
+        <div><label data-i18n="inset"></label><input name="inset_mm" type="number" value="2.5" step="0.5" min="0" max="10"></div>
+        <div><label data-i18n="bleed"></label><input name="bleed_mm" type="number" value="0" step="0.5" min="0" max="10"></div>
       </div>
       <div class="row">
         <div><label>DPI</label><input name="dpi" type="number" value="300" min="72" max="600"></div>
-        <div><label class="check"><input type="checkbox" name="guides" value="true"> Schneidlinn</label></div>
+        <div><label class="check"><input type="checkbox" name="guides" value="true"> <span data-i18n="guides"></span></label></div>
       </div>
-      <button id="go">Erweideren</button>
+      <button id="go" data-i18n="go"></button>
       <div id="status"></div>
     </form>
   </section>
-  <section class="panel" id="out"><div class="empty">Nach näischt generéiert.</div></section>
+  <section class="panel" id="out"><div class="empty" data-i18n="empty"></div></section>
 </main>
 <script>
+const I18N = {
+  en: {
+    subtitle: 'Upload a card → the artwork is extended to slab size. Card and label areas stay white.',
+    card: 'Card (scan or photo)', template: 'Template', model: 'Model',
+    prompt: 'Prompt (empty = default)', seed: 'Seed (-1 = random)', steps: 'Steps',
+    inset: 'Repaint card border (mm)', bleed: 'Bleed (mm)', guides: 'Cut line',
+    go: 'Extend', empty: 'Nothing generated yet.',
+    uploading: 'Uploading…', queued: 'Waiting in queue', running: 'Generating',
+    done: 'Done ({s}s, seed {seed})', error: 'Error: ',
+    print: 'Print ({w} × {h} mm, {dpi} dpi)', preview: 'Preview with card + label',
+    dlPdf: 'PDF (print)', dlPng: 'PNG (print)', dlPreview: 'Preview', dlRaw: 'Raw image', dlMask: 'Mask',
+    e_not_image: 'That is not an image (or it is too large).', e_too_large: 'File too large (max. {max} MB).',
+    e_out_of_range: 'A value is out of range.', e_unknown_option: 'Unknown template or model.',
+    e_queue_full: 'Too many jobs in the queue, try again later.', e_job_failed: 'Generation failed: {msg}',
+  },
+  de: {
+    subtitle: 'Karte hochladen → das Bild wird auf Slab-Größe erweitert. Karten- und Label-Bereich bleiben weiß.',
+    card: 'Karte (Scan oder Foto)', template: 'Vorlage', model: 'Modell',
+    prompt: 'Prompt (leer = Standard)', seed: 'Seed (-1 = zufällig)', steps: 'Schritte',
+    inset: 'Kartenrand übermalen (mm)', bleed: 'Beschnitt (mm)', guides: 'Schnittlinie',
+    go: 'Erweitern', empty: 'Noch nichts generiert.',
+    uploading: 'Hochladen…', queued: 'In der Warteschlange', running: 'Generiere',
+    done: 'Fertig ({s}s, Seed {seed})', error: 'Fehler: ',
+    print: 'Druck ({w} × {h} mm, {dpi} dpi)', preview: 'Vorschau mit Karte + Label',
+    dlPdf: 'PDF (Druck)', dlPng: 'PNG (Druck)', dlPreview: 'Vorschau', dlRaw: 'Rohbild', dlMask: 'Maske',
+    e_not_image: 'Das ist kein Bild (oder es ist zu groß).', e_too_large: 'Datei zu groß (max. {max} MB).',
+    e_out_of_range: 'Ein Wert liegt außerhalb des erlaubten Bereichs.', e_unknown_option: 'Unbekannte Vorlage oder unbekanntes Modell.',
+    e_queue_full: 'Zu viele Aufträge in der Warteschlange, bitte später erneut versuchen.', e_job_failed: 'Generierung fehlgeschlagen: {msg}',
+  },
+  fr: {
+    subtitle: "Téléversez une carte → l'illustration est étendue au format slab. Les zones de la carte et de l'étiquette restent blanches.",
+    card: 'Carte (scan ou photo)', template: 'Modèle de format', model: 'Modèle IA',
+    prompt: 'Prompt (vide = par défaut)', seed: 'Seed (-1 = aléatoire)', steps: 'Étapes',
+    inset: 'Repeindre le bord de la carte (mm)', bleed: 'Fond perdu (mm)', guides: 'Trait de coupe',
+    go: 'Étendre', empty: 'Rien de généré pour le moment.',
+    uploading: 'Téléversement…', queued: "En file d'attente", running: 'Génération',
+    done: 'Terminé ({s}s, seed {seed})', error: 'Erreur : ',
+    print: 'Impression ({w} × {h} mm, {dpi} dpi)', preview: 'Aperçu avec carte + étiquette',
+    dlPdf: 'PDF (impression)', dlPng: 'PNG (impression)', dlPreview: 'Aperçu', dlRaw: 'Image brute', dlMask: 'Masque',
+    e_not_image: "Ce n'est pas une image (ou elle est trop grande).", e_too_large: 'Fichier trop volumineux (max. {max} Mo).',
+    e_out_of_range: 'Une valeur est hors limites.', e_unknown_option: 'Format ou modèle inconnu.',
+    e_queue_full: "Trop de tâches en file d'attente, réessayez plus tard.", e_job_failed: 'La génération a échoué : {msg}',
+  },
+  lb: {
+    subtitle: 'Kaart eroplueden → d’Bild gëtt op Slab-Gréisst erweidert. Kaart- a Label-Beräich bleiwe wäiss.',
+    card: 'Kaart (Scan oder Foto)', template: 'Schabloun', model: 'Modell',
+    prompt: 'Prompt (eidel = Standard)', seed: 'Seed (-1 = zoufälleg)', steps: 'Schrëtt',
+    inset: 'Kaarte-Rand iwwermolen (mm)', bleed: 'Beschnëtt (mm)', guides: 'Schneidlinn',
+    go: 'Erweideren', empty: 'Nach näischt generéiert.',
+    uploading: 'Eroplueden…', queued: 'An der Waardeschlaang', running: 'Generéiert',
+    done: 'Fäerdeg ({s}s, Seed {seed})', error: 'Feeler: ',
+    print: 'Drock ({w} × {h} mm, {dpi} dpi)', preview: 'Virschau mat Kaart + Label',
+    dlPdf: 'PDF (Drock)', dlPng: 'PNG (Drock)', dlPreview: 'Virschau', dlRaw: 'Rou-Bild', dlMask: 'Mask',
+    e_not_image: 'Dat ass kee Bild (oder et ass ze grouss).', e_too_large: 'Fichier ze grouss (max. {max} MB).',
+    e_out_of_range: 'E Wäert ass ausserhalb vum Beräich.', e_unknown_option: 'Onbekannt Schabloun oder Modell.',
+    e_queue_full: 'Ze vill Jobs an der Waardeschlaang, méi spéit nach eng Kéier probéieren.', e_job_failed: 'Generéieren ass feelgeschloen: {msg}',
+  },
+};
 const $ = s => document.querySelector(s);
+let lang = 'en', lastResult = null;
+const t = (key, vars = {}) => (I18N[lang][key] ?? I18N.en[key] ?? key).replace(/\{(\w+)\}/g, (_, k) => vars[k] ?? '');
+
+function setLang(l) {
+  lang = I18N[l] ? l : 'en';
+  document.documentElement.lang = lang;
+  $('#lang').value = lang;
+  document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
+  if (lastResult) show(...lastResult);
+  try { localStorage.setItem('lang', lang); } catch {}
+}
+function initialLang() {
+  try { const saved = localStorage.getItem('lang'); if (saved) return saved; } catch {}
+  return (navigator.languages || [navigator.language]).map(l => l.slice(0, 2).toLowerCase()).find(l => I18N[l]) || 'en';
+}
+$('#lang').addEventListener('change', e => setLang(e.target.value));
+setLang(initialLang());
+
+// Server errors arrive as {code, ...params}; FastAPI wraps them in "detail".
+const errText = d => (d && d.code) ? t('e_' + d.code, d) : String(d);
+
 fetch('api/config').then(r => r.json()).then(c => {
   $('#template').innerHTML = Object.entries(c.templates).map(([k, v]) => `<option value="${k}">${v}</option>`).join('');
   $('#backend').innerHTML = c.backends.map(b => `<option ${b === c.default_backend ? 'selected' : ''}>${b}</option>`).join('');
@@ -72,36 +159,37 @@ fetch('api/config').then(r => r.json()).then(c => {
 $('#f').addEventListener('submit', async e => {
   e.preventDefault();
   const btn = $('#go'); btn.disabled = true;
-  const status = $('#status'); status.textContent = 'Eropluede…';
+  const status = $('#status'); status.textContent = t('uploading');
   const t0 = Date.now();
   try {
     const r = await fetch('api/extend', { method: 'POST', body: new FormData(e.target) });
-    if (!r.ok) throw new Error((await r.json()).detail || r.statusText);
+    if (!r.ok) throw new Error(errText((await r.json().catch(() => ({}))).detail || r.statusText));
     const { id } = await r.json();
     for (;;) {
       await new Promise(res => setTimeout(res, 2000));
       const j = await (await fetch(`api/jobs/${id}`)).json();
-      const secs = Math.round((Date.now() - t0) / 1000);
-      if (j.status === 'error') throw new Error(j.error);
-      if (j.status === 'done') { show(id, j.meta); status.textContent = `Fäerdeg (${secs}s, Seed ${j.meta.seed})`; break; }
-      status.textContent = (j.status === 'queued' ? 'An der Waardeschlaang' : 'Generéiert') + ` … ${secs}s`;
+      const s = Math.round((Date.now() - t0) / 1000);
+      if (j.status === 'error') throw new Error(errText(j.error));
+      if (j.status === 'done') { show(id, j.meta); status.textContent = t('done', { s, seed: j.meta.seed }); break; }
+      status.textContent = t(j.status === 'queued' ? 'queued' : 'running') + ` … ${s}s`;
     }
-  } catch (err) { status.textContent = 'Feeler: ' + err.message; }
+  } catch (err) { status.textContent = t('error') + err.message; }
   btn.disabled = false;
 });
 function show(id, m) {
+  lastResult = [id, m];
   const u = n => `api/jobs/${id}/${n}?t=${Date.now()}`;
   $('#out').innerHTML = `
     <div class="results">
-      <figure><img src="${u('print.png')}"><figcaption>Drock (${m.size_mm.join(' × ')} mm, ${m.dpi} dpi)</figcaption></figure>
-      <figure><img src="${u('preview.jpg')}"><figcaption>Virschau mat Kaart + Label</figcaption></figure>
+      <figure><img src="${u('print.png')}" alt=""><figcaption>${t('print', { w: m.size_mm[0], h: m.size_mm[1], dpi: m.dpi })}</figcaption></figure>
+      <figure><img src="${u('preview.jpg')}" alt=""><figcaption>${t('preview')}</figcaption></figure>
     </div>
     <div class="dl">
-      <a href="${u('print.pdf')}" download>PDF (Drock)</a>
-      <a href="${u('print.png')}" download>PNG (Drock)</a>
-      <a href="${u('preview.jpg')}" download>Virschau</a>
-      <a href="${u('raw.png')}" download>Rou-Bild</a>
-      <a href="${u('mask.png')}" download>Mask</a>
+      <a href="${u('print.pdf')}" download>${t('dlPdf')}</a>
+      <a href="${u('print.png')}" download>${t('dlPng')}</a>
+      <a href="${u('preview.jpg')}" download>${t('dlPreview')}</a>
+      <a href="${u('raw.png')}" download>${t('dlRaw')}</a>
+      <a href="${u('mask.png')}" download>${t('dlMask')}</a>
     </div>`;
 }
 </script>

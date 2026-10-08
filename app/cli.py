@@ -13,7 +13,7 @@ from .pipeline import Options, run
 
 
 def main() -> None:
-    p = argparse.ArgumentParser(description="Pokémon-Kaart op PSA-Slab-Gréisst erweideren")
+    p = argparse.ArgumentParser(description="Extend a Pokémon card to PSA slab size")
     p.add_argument("image", type=Path)
     p.add_argument("-o", "--out", type=Path, default=Path("out"))
     defaults = Options()

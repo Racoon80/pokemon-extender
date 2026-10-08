@@ -1,6 +1,6 @@
 {
-  "name": "PSA Slab (Acryl-Case)",
-  "note": "Baussemooss 81 x 136 mm = déi meescht zitéiert PSA-Slab-Gréisst (PSA publizéiert keng offiziell Spec). Label- a Kaartepositioun aus dem Beispill-Bild gemooss (Kaart = 63 mm) — mat engem richtege Slab nomoossen.",
+  "name": "PSA slab (acrylic case)",
+  "note": "Outer size 81 x 136 mm = the most widely quoted PSA slab size (PSA publishes no official spec). Label and card positions measured from a product photo (card = 63 mm) - verify against a real slab.",
   "width_mm": 81,
   "height_mm": 136,
   "corner_radius_mm": 4,
