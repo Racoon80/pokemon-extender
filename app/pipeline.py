@@ -36,7 +36,7 @@ class Options:
 
 # Illustration area as fractions of the card (x0, y0, x1, y1). Below the name/HP bar and above the
 # attack text on both regular and full-art cards, inside the frame.
-ART_BOX = (0.07, 0.10, 0.93, 0.50)
+ART_BOX = (0.055, 0.10, 0.945, 0.50)
 
 
 def _round_to(v: float, m: int) -> int:
@@ -59,16 +59,16 @@ def _gen_canvas(layout: Layout, card: Image.Image, opts: Options, multiple: int,
     draw = ImageDraw.Draw(mask)
 
     if opts.context == "art":
-        # A whole card (frame, title, attack text) makes the model paint a card or a slab around it.
-        # The card area ends up white anyway, so show it only the illustration, card-wide and centred.
+        # A whole card (frame, title, attack text) makes the model paint a card or a slab around it,
+        # so it only sees the illustration — at exactly the size and place it has on the real card,
+        # otherwise the continued scenery does not line up with the card lying on top of it.
         bx0, by0, bx1, by1 = ART_BOX
-        art = card.crop((round(bx0 * card.width), round(by0 * card.height),
-                         round(bx1 * card.width), round(by1 * card.height)))
-        aw = x1 - x0
-        ah = min(y1 - y0, round(aw * art.height / art.width))
-        context, cx, cy = art.resize((aw, ah), Image.LANCZOS), x0, y0 + (y1 - y0 - ah) // 2
-        pad = round(1.0 * sx)  # 1 mm soft seam
-        draw.rectangle((cx + pad, cy + pad, cx + aw - pad, cy + ah - pad), fill=0)
+        cw, ch = x1 - x0, y1 - y0
+        ax0, ay0, ax1, ay1 = round(bx0 * cw), round(by0 * ch), round(bx1 * cw), round(by1 * ch)
+        context = card.resize((cw, ch), Image.LANCZOS).crop((ax0, ay0, ax1, ay1))
+        cx, cy = x0 + ax0, y0 + ay0
+        pad = round(0.5 * sx)  # soft seam, well inside the white card area
+        draw.rectangle((cx + pad, cy + pad, cx + context.width - pad, cy + context.height - pad), fill=0)
     else:
         context, cx, cy = card.resize((x1 - x0, y1 - y0), Image.LANCZOS), x0, y0
         keep = Rect(layout.card.x, layout.card.y, layout.card.w, layout.card.h).grow(-opts.inset_mm)
