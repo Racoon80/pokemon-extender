@@ -29,7 +29,8 @@ internet are no longer needed. After every start the model needs a few minutes t
 4. *Compose Up*. Docker builds the image straight from this GitHub repo; nothing to clone.
 5. Open `http://<unraid-ip>:8000` (or *WebUI* in the Docker tab).
 
-Update: *Compose Down*, then *Update Stack* (rebuilds from GitHub), *Compose Up*.
+Update: *Update Stack* — it rebuilds the latest version from GitHub (`pull_policy: build`); the
+AI model in appdata is kept.
 
 ### Linux / Windows (Docker)
 1. NVIDIA driver and Docker with GPU support

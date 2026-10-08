@@ -10,6 +10,7 @@ services:
   pokemon-extender:
     build: .
     image: pokemon-extender:latest
+    pull_policy: build                 # local image, never pulled from a registry
     container_name: pokemon-extender
     restart: unless-stopped
     ports:

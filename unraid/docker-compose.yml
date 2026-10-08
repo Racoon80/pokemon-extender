@@ -3,6 +3,7 @@
 # Needs: "Nvidia Driver" plugin (Apps tab) and an NVIDIA GPU with 12 GB VRAM or more.
 # Docker → Compose → Add New Stack → "Pokemon-Extender" → Edit Stack → Compose File:
 # paste this file, put your Hugging Face token in (HF_TOKEN), save, then "Compose Up".
+# Update later: "Update Stack" (the AI model in appdata is kept).
 # Docker builds the image straight from GitHub; nothing to clone or copy.
 # The first start downloads the AI model (~15 GB) into appdata; the web page shows the progress.
 services:
@@ -10,6 +11,7 @@ services:
     build:
       context: https://github.com/Racoon80/pokemon-extender.git#main
     image: pokemon-extender:latest
+    pull_policy: build                 # built from GitHub, never pulled: "Update Stack" rebuilds the latest version
     container_name: pokemon-extender
     restart: unless-stopped
     runtime: nvidia
