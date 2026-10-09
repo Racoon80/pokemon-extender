@@ -1,6 +1,6 @@
 """The cut line for print-then-cut (Bambu Suite and other cutters), in millimetres: the slab outline
-and the label window, together as one path (one object to import, not several). The card is not cut:
-it is part of the picture.
+plus the label and card windows, together as one path (one object to import, not several). The card
+window is white_margin_mm larger than the card so the real card fits in.
 
 Every file uses the full sheet (bleed included) as its coordinate system with the origin in the
 top-left corner of print.png, so the cut line lands on the printed image without manual alignment.
@@ -39,7 +39,7 @@ def _svg(layout: Layout, body: str) -> str:
 
 
 def cut_rects(layout: Layout) -> list[Rect]:
-    return [layout.trim, layout.label]
+    return [layout.trim, layout.label, layout.card.grow(layout.white_margin_mm)]
 
 
 def _cut_element(layout: Layout) -> str:

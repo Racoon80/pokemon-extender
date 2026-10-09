@@ -55,8 +55,21 @@ def _rounded(draw: ImageDraw.ImageDraw, r: Rect, s: float, **kw):
     draw.rounded_rectangle((x0, y0, x1 - 1, y1 - 1), radius=rad, **kw)
 
 
+def _fill_card_corners(sheet: np.ndarray, layout: Layout, px_per_mm: float) -> np.ndarray:
+    """The card window has rounded corners like a real card; a card in the picture often has sharper
+    ones. Whatever is left of it around the window would stay on the print as white corners, so
+    those bits are painted over with the surrounding background."""
+    window = layout.card.grow(layout.white_margin_mm)
+    square = Rect(window.x, window.y, window.w, window.h).grow(0.3)
+    mask = Image.new("L", (sheet.shape[1], sheet.shape[0]), 0)
+    draw = ImageDraw.Draw(mask)
+    _rounded(draw, square, px_per_mm, fill=255)
+    _rounded(draw, window.grow(-0.2), px_per_mm, fill=0)  # inside the window it is cut away anyway
+    return cv2.inpaint(sheet, np.asarray(mask), round(1.5 * px_per_mm), cv2.INPAINT_TELEA)
+
+
 def _cutout(sheet: Image.Image, layout: Layout, px_per_mm: float) -> Image.Image:
-    """Only the slab, transparent outside its outline and inside the label window: Bambu Suite's
+    """Only the slab, transparent outside its outline and inside the label and card windows: Bambu Suite's
     Print Then Cut traces the edges of the picture, so this alone gives the cuts. No bleed."""
     x0, y0, x1, y1, _ = layout.trim.to_px(px_per_mm, px_per_mm)
     out = sheet.crop((x0, y0, x1, y1)).convert("RGBA")
@@ -65,7 +78,8 @@ def _cutout(sheet: Image.Image, layout: Layout, px_per_mm: float) -> Image.Image
     r = round(layout.corner_radius_mm * px_per_mm * k)
     draw = ImageDraw.Draw(mask)
     draw.rounded_rectangle((0, 0, mask.width - 1, mask.height - 1), radius=r, fill=255)
-    _rounded(draw, layout.label.shift(-layout.trim.x, -layout.trim.y), px_per_mm * k, fill=0)
+    for r in cutfile.cut_rects(layout)[1:]:
+        _rounded(draw, r.shift(-layout.trim.x, -layout.trim.y), px_per_mm * k, fill=0)
     out.putalpha(mask.resize(out.size, Image.LANCZOS))
     return out
 
@@ -98,6 +112,7 @@ def run(img: Image.Image, opts: Options, out_dir: Path) -> dict:
         soft = cv2.GaussianBlur((~missing).astype(np.float32), (0, 0), 0.5 * px_per_mm)[..., None]
         sheet = (sheet * soft + blurred * (1 - soft)).astype(np.uint8)
 
+    sheet = _fill_card_corners(sheet, layout, px_per_mm)
     out = Image.fromarray(sheet)
     out.save(out_dir / "print.png", dpi=(opts.dpi, opts.dpi))
     out.save(out_dir / "print.pdf", resolution=opts.dpi)
@@ -111,7 +126,8 @@ def run(img: Image.Image, opts: Options, out_dir: Path) -> dict:
     preview = out.copy()
     shade = Image.new("L", out.size, 150)
     _rounded(ImageDraw.Draw(shade), layout.trim, px_per_mm, fill=0)
-    _rounded(ImageDraw.Draw(shade), layout.label, px_per_mm, fill=150)
+    for r in cutfile.cut_rects(layout)[1:]:
+        _rounded(ImageDraw.Draw(shade), r, px_per_mm, fill=150)
     preview.paste(Image.new("RGB", out.size, (255, 255, 255)), (0, 0), shade)
     pd = ImageDraw.Draw(preview)
     for r in cutfile.cut_rects(layout):

@@ -2,7 +2,7 @@
 
 Turns a **finished picture** — a Pokémon card already extended to slab size (by hand or with any AI
 tool), the card itself still in it — into a print sheet in the exact size of a **PSA slab** plus
-**one cut line**: the slab outline plus the label window, as one path. Print it, cut it, put it into the acrylic case.
+**one cut line**: the slab outline plus the label and card windows, as one path. Print it, cut it, put it into the acrylic case.
 
 The program does no painting. It finds the card in the picture, takes its size as the scale (a card
 is 63 × 88 mm), and places the slab outline around it so the printed card lands exactly where the
@@ -78,13 +78,13 @@ file there wins over the built-in one with the same name. It is read for every j
 | `OUTPUT_TTL_HOURS` | Results are deleted after 72 h |
 
 ## Print then cut (Bambu Lab cutting module, other cutters)
-The cut is **one path** with two closed shapes — the slab outline and the label window — in
-millimetres, with the same origin (top left) as the print image. The card is not cut: it is part of
-the picture.
+The cut is **one path** with three closed shapes — the slab outline, the label window and the card
+window — in millimetres, with the same origin (top left) as the print image. The card window is
+`white_margin_mm` (0.5 mm) larger than the card on every side, so the real card fits in.
 
 | File | Use |
 |---|---|
-| `cutout.png` | **Bambu Suite:** only the slab (81 × 136 mm), transparent outside its rounded outline and inside the label window. Import, set to *Print Then Cut*: the Suite traces the edge itself, no cut file needed. No bleed |
+| `cutout.png` | **Bambu Suite:** only the slab (81 × 136 mm), transparent outside its rounded outline and inside the label and card windows. Import, set to *Print Then Cut*: the Suite traces the edge itself, no cut file needed. No bleed |
 | `print-cut.svg` | Print image and cut line in one file, already aligned |
 | `print.pdf` / `print.png` | Print image only, exact size incl. bleed |
 | `cut.dxf` | Cut line only, for software that wants the cut as a separate DXF |
