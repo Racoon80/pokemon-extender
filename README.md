@@ -31,7 +31,9 @@ Open `http://localhost:8000`.
 
 The image (`linux/amd64` and `linux/arm64`, so Raspberry Pi and Apple Silicon too) is built by
 GitHub Actions on every push to `main`. To build it yourself: clone the repo and
-`docker build -t pokemon-extender .`. The port only listens on the local machine (`127.0.0.1`). For your
+`docker build -t pokemon-extender .`.
+
+The port only listens on the local machine (`127.0.0.1`). For your
 LAN, change it to `"8000:8000"` in `docker-compose.yml`. There is **no login** — never expose it to
 the internet.
 
