@@ -16,17 +16,22 @@ switchable in the top corner). A job takes a second or two; no GPU needed.
 1. Apps: install **Docker Compose Manager**.
 2. Docker → *Compose* → *Add New Stack* → name `Pokemon-Extender`.
 3. *Edit Stack* → *Compose File*: paste [`unraid/docker-compose.yml`](unraid/docker-compose.yml), save.
-4. *Compose Up*. Docker builds the image straight from this GitHub repo; nothing to clone.
+4. *Compose Up*. It pulls the image `ghcr.io/racoon80/pokemon-extender:latest`.
 5. Open `http://<unraid-ip>:8000` (or *WebUI* in the Docker tab).
 
-Update: *Update Stack* — it rebuilds the latest version from GitHub (`pull_policy: build`).
+Update: *Update Stack* — it pulls the latest image.
 
 ### Linux / Windows / macOS (Docker)
+Put [`docker-compose.yml`](docker-compose.yml) into an empty folder, then:
 ```bash
-git clone https://github.com/Racoon80/pokemon-extender.git && cd pokemon-extender
-docker compose up -d --build
+docker compose up -d                              # update: docker compose pull && docker compose up -d
 ```
-Open `http://localhost:8000`. The port only listens on the local machine (`127.0.0.1`). For your
+Or without compose: `docker run -d -p 127.0.0.1:8000:8000 -v ./data:/data ghcr.io/racoon80/pokemon-extender:latest`.
+Open `http://localhost:8000`.
+
+The image (`linux/amd64` and `linux/arm64`, so Raspberry Pi and Apple Silicon too) is built by
+GitHub Actions on every push to `main`. To build it yourself: clone the repo and
+`docker build -t pokemon-extender .`. The port only listens on the local machine (`127.0.0.1`). For your
 LAN, change it to `"8000:8000"` in `docker-compose.yml`. There is **no login** — never expose it to
 the internet.
 

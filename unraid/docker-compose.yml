@@ -1,14 +1,10 @@
 # Pokemon-Extender — Unraid, Compose Manager plugin. No GPU needed.
 #
 # Docker → Compose → Add New Stack → "Pokemon-Extender" → Edit Stack → Compose File:
-# paste this file, save, then "Compose Up". Update later: "Update Stack".
-# Docker builds the image straight from GitHub; nothing to clone or copy.
+# paste this file, save, then "Compose Up". Update later: "Update Stack" (pulls the latest image).
 services:
   pokemon-extender:
-    build:
-      context: https://github.com/Racoon80/pokemon-extender.git#main
-    image: pokemon-extender:latest
-    pull_policy: build                 # built from GitHub, never pulled: "Update Stack" rebuilds the latest version
+    image: ghcr.io/racoon80/pokemon-extender:latest
     container_name: pokemon-extender
     restart: unless-stopped
     ports:

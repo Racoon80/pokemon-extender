@@ -1,12 +1,12 @@
 # Pokemon-Extender — print sheet + cut line for a finished slab picture. No GPU needed.
 # (Unraid with the Compose Manager plugin: use unraid/docker-compose.yml instead.)
 #
-# docker compose up -d --build, then http://localhost:8000
+# docker compose up -d, then http://localhost:8000
+# Update: docker compose pull && docker compose up -d
+# Build it yourself instead: replace "image:" with "build: ." and run docker compose up -d --build
 services:
   pokemon-extender:
-    build: .
-    image: pokemon-extender:latest
-    pull_policy: build                 # local image, never pulled from a registry
+    image: ghcr.io/racoon80/pokemon-extender:latest
     container_name: pokemon-extender
     restart: unless-stopped
     ports:
