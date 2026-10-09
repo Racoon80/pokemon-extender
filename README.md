@@ -1,108 +1,152 @@
 # Pokemon-Extender
 
-Turns a **finished picture** — a Pokémon card already extended to slab size (by hand or with any AI
-tool), the card itself still in it — into a print sheet in the exact size of a **PSA slab** plus
-**one cut line**: the slab outline plus the label and card windows, as one path. Print it, cut it, put it into the acrylic case.
+**Your favourite card, framed like a graded slab — printed, cut and ready for the acrylic case.**
 
-The program does no painting. It finds the card in the picture, takes its size as the scale (a card
-is 63 × 88 mm), and places the slab outline around it so the printed card lands exactly where the
-real card lies in the slab.
+[![Licence: MIT](https://img.shields.io/badge/licence-MIT-e53935)](LICENSE)
+[![Docker image](https://img.shields.io/badge/docker-ghcr.io%2Fracoon80%2Fpokemon--extender-e53935)](https://github.com/Racoon80/pokemon-extender/pkgs/container/pokemon-extender)
+[![amd64 · arm64](https://img.shields.io/badge/platform-amd64%20%C2%B7%20arm64-e53935)](#install)
 
-Web UI in **English, Deutsch, Français and Lëtzebuergesch** (follows the browser language,
-switchable in the top corner). A job takes a second or two; no GPU needed.
+<a href="https://www.buymeacoffee.com/dv7g" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-orange.png" alt="Buy me a coffee" height="41" width="174"></a>
+
+You have a picture of a Pokémon card whose artwork carries on past the card's edge — painted by
+hand, or extended with whatever AI tool you like. Pokemon-Extender turns that picture into an insert
+for a PSA- or BGS-style acrylic case: a print sheet in the exact size of the slab, with the cut lines
+for the outline, the label window and the card window. Print it, let the cutter do its work, put
+the real card in the window and the label above it.
+
+It does not paint anything. It finds the card in your picture, uses it as a ruler (a card is
+always 63 × 88 mm), and lays the slab around it so the printed card sits exactly where the real one
+lies in the case.
+
+- **One upload, one second.** No GPU, no AI model, no account. A small Docker container.
+- **Real millimetres.** Everything is measured in mm, from a template you can correct.
+- **Made for print-then-cut.** A file that Bambu Suite takes as it is (H2D/H2S with the cutting
+  module), plus SVG and DXF for every other cutter.
+- **In four languages.** English, Deutsch, Français and Lëtzebuergesch — it follows the browser.
+
+---
+
+## What comes out
+
+<img src="docs/layout-psa.svg" alt="PSA layout: 81 × 136 mm sheet, label window 5.6 mm from the top, 11.6 mm gap, card window" width="360" align="right">
+
+For a PSA slab the sheet is **81 × 136 mm**. Three closed shapes are cut, all in one path:
+
+1. **The outline** with rounded corners — the insert itself.
+2. **The label window**, 68 × 18.3 mm, 5.6 mm from the top.
+3. **The card window**, 0.5 mm larger than the card on every side so the real card slips in,
+   35.5 mm from the top — 11.6 mm of picture between label and card, as in the case.
+
+| Download | What it is for |
+|---|---|
+| **Bambu Suite (SVG)** | The slab as one picture, transparent outside the outline and inside both windows, with its size in mm. Drop it into Bambu Suite, choose *Print Then Cut* — the Suite cuts along the edges by itself. |
+| **Print + cut line (SVG)** | Picture and cut path in one file, already aligned, for other cutting software. |
+| **PDF / PNG** | The print alone, at exact size with 2 mm bleed. |
+| **Cut line only (DXF)** | The cut path alone, for software that wants it separately. |
+
+<br clear="right">
+
+## The picture you upload
+
+- The **whole card** is visible, upright, with background around it on every side. A slight tilt
+  is straightened.
+- Leave **enough room above the card** for the label: with PSA about 40 % of the card's height.
+  What is missing is filled with blurred background, and the page tells you how many mm on which side.
+- **Resolution:** at 260 dpi the card needs about 650 × 900 px. Below 200 dpi the page warns that
+  the print will be soft.
 
 ## Install
+
 ### Unraid (Compose Manager plugin)
 1. Apps: install **Docker Compose Manager**.
-2. Docker → *Compose* → *Add New Stack* → name `Pokemon-Extender`.
+2. Docker → *Compose* → *Add New Stack* → name it `Pokemon-Extender`.
 3. *Edit Stack* → *Compose File*: paste [`unraid/docker-compose.yml`](unraid/docker-compose.yml), save.
-4. *Compose Up*. It pulls the image `ghcr.io/racoon80/pokemon-extender:latest`.
-5. Open `http://<unraid-ip>:8000` (or *WebUI* in the Docker tab).
+4. *Compose Up*, then open `http://<unraid-ip>:8000` — or *WebUI* in the Docker tab.
 
-Update: *Update Stack* — it pulls the latest image.
+Updates: *Update Stack* pulls the newest image.
 
-### Linux / Windows / macOS (Docker)
-Put [`docker-compose.yml`](docker-compose.yml) into an empty folder, then:
+### Docker anywhere else (Linux, Windows, macOS, Raspberry Pi)
+Put [`docker-compose.yml`](docker-compose.yml) into an empty folder and run
+
 ```bash
-docker compose up -d                              # update: docker compose pull && docker compose up -d
+docker compose up -d
 ```
-Or without compose: `docker run -d -p 127.0.0.1:8000:8000 -v ./data:/data ghcr.io/racoon80/pokemon-extender:latest`.
-Open `http://localhost:8000`.
 
-The image (`linux/amd64` and `linux/arm64`, so Raspberry Pi and Apple Silicon too) is built by
-GitHub Actions on every push to `main`. To build it yourself: clone the repo and
-`docker build -t pokemon-extender .`.
+then open `http://localhost:8000`. Updates: `docker compose pull && docker compose up -d`.
 
-The port only listens on the local machine (`127.0.0.1`). For your
-LAN, change it to `"8000:8000"` in `docker-compose.yml`. There is **no login** — never expose it to
-the internet.
+Without compose:
 
-## The picture
-- The **whole card** has to be visible, upright, with background around it on every side.
-- Any size or aspect ratio. The card's resolution decides the print quality: at 260 dpi the card
-  needs about 650 × 900 px. Below 200 dpi the UI warns.
-- Where the picture does not reach the cut line, it is filled with blurred, mirrored background
-  and the UI says how many mm were missing on which side.
+```bash
+docker run -d -p 127.0.0.1:8000:8000 -v ./data:/data ghcr.io/racoon80/pokemon-extender:latest
+```
 
-**Card and label position** are fixed by the template, as in the real case: PSA card 35.5 mm from
-the top, label window 5.6 mm from the top, 11.6 mm of picture between them. Leave enough
-background above the card (PSA: about 36 mm at card scale, i.e. 40 % of the card height).
+The image is built for `linux/amd64` and `linux/arm64` by GitHub Actions on every push to `main`.
+To build it yourself: `docker build -t pokemon-extender .`
 
-## How it works
-1. Find the card: the largest card-shaped (63:88) rectangle inside the picture (`app/card.py`),
-   slight rotation included.
-2. Scale = card width in pixels / 63 mm. Place the slab outline and label window from
-   `templates/*.json` around it.
-3. Resample the picture to the sheet at print resolution (`app/pipeline.py`).
-4. Write the sheet and the cut line (`app/cutfile.py`).
+> **There is no login.** The default compose file listens on this computer only. Opening it to your
+> LAN is fine (`"8000:8000"`); never forward the port to the internet.
 
-## Slab formats (`templates/*.json`)
-Pick the format in the web UI (or `--template` on the CLI). All values in mm.
+## Slab formats
 
-| Template | Outer size | Label window | Card |
+Pick the format on the page (or `--template` on the command line). All values in mm.
+
+| Template | Sheet | Label window | Card |
 |---|---|---|---|
 | `psa` — PSA | 81 × 136 | 68 × 18.3, 5.6 from the top | 63 × 88, 9 from the left, 35.5 from the top |
 | `bgs` — Beckett | 84 × 131 | 63 × 20, 6 from the top | 63 × 88, 10.5 from the left, 31 from the top |
 
-Outer sizes are the most widely quoted figures — neither PSA nor Beckett publishes an official
-spec. Label and card positions are measured from product photos (PSA) or estimated (BGS):
-check them against a real slab. To correct one or add a format, put a `*.json` into
-`templates/` inside the data volume (Unraid: `/mnt/user/appdata/pokemon-extender/templates/`); a
-file there wins over the built-in one with the same name. It is read for every job.
+Neither PSA nor Beckett publishes official measurements: the sheet sizes are the most widely quoted
+figures, the positions are measured from product photos (PSA) or estimated (BGS). Check them against
+your case. To correct a format or add one, put a `*.json` into `templates/` inside the data volume
+(Unraid: `/mnt/user/appdata/pokemon-extender/templates/`) — a file there wins over the built-in one
+of the same name and is read for every job. The built-in ones are in [`templates/`](templates/).
 
-## Settings (`docker-compose.yml`)
-| Variable | |
-|---|---|
-| `MAX_UPLOAD_MB` | Upload limit (25 MB) |
-| `MAX_JOBS` | Pictures processed at the same time (2); more wait up to 30 s, then get *busy* |
-| `OUTPUT_TTL_HOURS` | Results are deleted after 72 h |
+## Bambu Lab, step by step
 
-## Print then cut (Bambu Lab cutting module, other cutters)
-The cut is **one path** with three closed shapes — the slab outline, the label window and the card
-window — in millimetres, with the same origin (top left) as the print image. The card window is
-`white_margin_mm` (0.5 mm) larger than the card on every side, so the real card fits in.
+1. On the page: upload, choose the template, *Make print + cut line*.
+2. Download **Bambu Suite (SVG)**.
+3. In **Bambu Suite** (not Bambu Studio — the cutting module lives in the Suite) drag the SVG onto
+   the canvas. It arrives at 81 × 136 mm.
+4. Set it to **Print Then Cut** and follow the Suite: it prints on your paper printer, then the
+   H2D/H2S cuts along the outline and both windows.
 
-| File | Use |
-|---|---|
-| `cutout.svg` | **Bambu Suite:** only the slab (81 × 136 mm) as a picture, transparent outside its rounded outline and inside the label and card windows, wrapped in an SVG that gives its size in mm (the Suite ignores a PNG's dpi and imports it 2.28× too large). Import, set to *Print Then Cut*: the Suite traces the edge itself, no cut file needed. No bleed |
-| `print-cut.svg` | Print image and cut line in one file, already aligned |
-| `print.pdf` / `print.png` | Print image only, exact size incl. bleed |
-| `cut.dxf` | Cut line only, for software that wants the cut as a separate DXF |
+The Suite traces the cut from the picture's edges and does not let you edit cut lines by hand,
+which is why this file has transparent holes instead of a separate cut line. It also ignores the
+dpi of a PNG (one came in 2.28× too large) but keeps the size of an SVG — hence the SVG wrapper.
 
-On Bambu Lab printers (H2D/H2S with the cutting module) print-then-cut runs in **Bambu Suite**
-(not Bambu Studio). The Suite makes the cut lines itself from the outline of the picture and they
-cannot be edited by hand, so `cutout.svg` is the simplest way in. For other cutters use
-`print-cut.svg` or `cut.dxf` and keep the default **2 mm bleed** so the blade never runs along the
-edge of the picture.
+## How it works
 
-## CLI
+1. **Find the card** — the largest 63:88 rectangle inside the picture, rotation included
+   ([`app/card.py`](app/card.py)).
+2. **Scale** — card width in pixels ÷ 63 mm.
+3. **Lay out** — outline, label and card window from the template, around the card
+   ([`app/layout.py`](app/layout.py)).
+4. **Resample** the picture to print resolution; fill what is missing; paint over whatever of a
+   sharp-cornered card would peek out around the rounded card window
+   ([`app/pipeline.py`](app/pipeline.py)).
+5. **Write** the print and the cut files ([`app/cutfile.py`](app/cutfile.py)).
+
+## Settings
+
+| Variable | Default | |
+|---|---|---|
+| `MAX_UPLOAD_MB` | 25 | Largest upload |
+| `MAX_JOBS` | 2 | Pictures processed at the same time; more wait up to 30 s, then get *busy* |
+| `OUTPUT_TTL_HOURS` | 72 | Results are deleted after this |
+
+## Command line
+
 ```bash
-docker compose exec pokemon-extender python -m app.cli /data/picture.jpg -o /data/out
-# locally: pip install -r requirements.txt, then
-python -m app.cli picture.jpg -o out
+docker compose exec pokemon-extender python -m app.cli /data/picture.jpg -o /data/out --template psa
+# or locally: pip install -r requirements.txt && python -m app.cli picture.jpg -o out
 ```
 
 ## Licence
-Code: MIT (`LICENSE`).
-Pokémon and card images are © Nintendo / Creatures / GAME FREAK — this project is not
-affiliated with them.
+
+Code: MIT ([`LICENSE`](LICENSE)). Pokémon and the card images are © Nintendo / Creatures / GAME
+FREAK. This project is not affiliated with them, and the pictures you print are yours to be
+responsible for.
+
+If it saved you an afternoon with a craft knife:
+
+<a href="https://www.buymeacoffee.com/dv7g" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-orange.png" alt="Buy me a coffee" height="41" width="174"></a>

@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="554" height="634" viewBox="0 0 554 634" font-family="system-ui, sans-serif">
+<style>
+ .sheet{fill:#cfe6f5;stroke:#e53935;stroke-width:2} .win{fill:#fafafa;stroke:#e53935;stroke-width:2}
+ .d{stroke:#555;stroke-width:1;stroke-dasharray:3 3} .k{stroke:#555;stroke-width:1.5} .t{fill:#333;font-size:13px} .lbl{fill:#888;font-size:15px;font-weight:600}
+</style>
+<rect width="100%" height="100%" fill="#ffffff" rx="12"/>
+<rect class="sheet" x="40.0" y="40.0" width="324.0" height="544.0" rx="16.0"/>
+<rect class="win" x="66.0" y="62.4" width="272.0" height="73.2" rx="4.0"/>
+<rect class="win" x="74.0" y="180.0" width="256.0" height="356.0" rx="14.0"/>
+<text class="lbl" text-anchor="middle" x="202.0" y="104.0">LABEL</text>
+<text class="lbl" text-anchor="middle" x="202.0" y="363.0">CARD</text>
+<line class="d" x1="40" y1="24" x2="364" y2="24"/><line class="k" x1="40.0" y1="19.0" x2="40.0" y2="29.0"/><line class="k" x1="364.0" y1="19.0" x2="364.0" y2="29.0"/><text class="t" text-anchor="middle" x="202.0" y="18">81 mm</text>
+<line class="d" x1="388" y1="40" x2="388" y2="584"/><line class="k" x1="383.0" y1="40.0" x2="393.0" y2="40.0"/><line class="k" x1="383.0" y1="584.0" x2="393.0" y2="584.0"/><text class="t" x="394" y="317.0">136 mm</text>
+<line class="d" x1="484" y1="40" x2="484" y2="62.4"/><line class="k" x1="479.0" y1="40.0" x2="489.0" y2="40.0"/><line class="k" x1="479.0" y1="62.4" x2="489.0" y2="62.4"/><text class="t" x="490" y="56.2">5.6</text>
+<line class="d" x1="484" y1="62.4" x2="484" y2="135.6"/><line class="k" x1="479.0" y1="62.4" x2="489.0" y2="62.4"/><line class="k" x1="479.0" y1="135.6" x2="489.0" y2="135.6"/><text class="t" x="490" y="104.0">label 18.3</text>
+<line class="d" x1="484" y1="135.6" x2="484" y2="182.0"/><line class="k" x1="479.0" y1="135.6" x2="489.0" y2="135.6"/><line class="k" x1="479.0" y1="182.0" x2="489.0" y2="182.0"/><text class="t" x="490" y="163.8">11.6</text>
+<line class="d" x1="484" y1="182.0" x2="484" y2="534.0"/><line class="k" x1="479.0" y1="182.0" x2="489.0" y2="182.0"/><line class="k" x1="479.0" y1="534.0" x2="489.0" y2="534.0"/><text class="t" x="490" y="363.0">card 88</text>
+</svg>
