@@ -1,5 +1,5 @@
-"""Cut lines for print-then-cut (Bambu Suite and other cutters), in millimetres: the slab outline
-plus the card and label windows, cut along the edge of their white areas so no white is left over.
+"""The cut line for print-then-cut (Bambu Suite and other cutters), in millimetres: one closed path,
+the slab outline. Nothing else is cut.
 
 Every file uses the full sheet (bleed included) as its coordinate system with the origin in the
 top-left corner of print.png, so the cut line lands on the printed image without manual alignment.
@@ -37,18 +37,8 @@ def _svg(layout: Layout, body: str) -> str:
             f'width="{_f(w)}mm" height="{_f(h)}mm" viewBox="0 0 {_f(w)} {_f(h)}">\n{body}</svg>\n')
 
 
-def cut_rects(layout: Layout) -> dict[str, Rect]:
-    m = layout.white_margin_mm
-    return {"outline": layout.trim, "card": layout.card.grow(m), "label": layout.label.grow(m)}
-
-
 def _cut_element(layout: Layout) -> str:
-    return "".join(f'  <path id="cut-{name}" d="{_svg_path(r)}" fill="none" stroke="{STROKE}" '
-                   f'stroke-width="0.1"/>\n' for name, r in cut_rects(layout).items())
-
-
-def write_svg(layout: Layout, path: Path) -> None:
-    path.write_text(_svg(layout, _cut_element(layout)))
+    return f'  <path id="cut" d="{_svg_path(layout.trim)}" fill="none" stroke="{STROKE}" stroke-width="0.1"/>\n'
 
 
 def write_print_svg(layout: Layout, png: Path, path: Path) -> None:
@@ -79,18 +69,16 @@ def _dxf_polyline(r: Rect, sheet_h: float) -> list[str]:
 
 
 def write_dxf(layout: Layout, path: Path) -> None:
-    """DXF R12, units mm, one closed polyline per cut."""
+    """DXF R12, units mm, one closed polyline."""
     h = layout.total_h_mm
     out = ["0", "SECTION", "2", "HEADER", "9", "$ACADVER", "1", "AC1009", "9", "$INSUNITS", "70", "4",
            "9", "$EXTMIN", "10", "0", "20", "0", "9", "$EXTMAX", "10", _f(layout.total_w_mm), "20", _f(h),
            "0", "ENDSEC", "0", "SECTION", "2", "ENTITIES"]
-    for r in cut_rects(layout).values():
-        out += _dxf_polyline(r, h)
+    out += _dxf_polyline(layout.trim, h)
     out += ["0", "ENDSEC", "0", "EOF"]
     path.write_text("\n".join(out) + "\n")
 
 
 def write_all(layout: Layout, out_dir: Path) -> None:
-    write_svg(layout, out_dir / "cut.svg")
     write_dxf(layout, out_dir / "cut.dxf")
     write_print_svg(layout, out_dir / "print.png", out_dir / "print-cut.svg")

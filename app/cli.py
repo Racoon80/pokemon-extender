@@ -1,9 +1,8 @@
-"""python -m app.cli card.jpg -o out/ [--template psa|bgs] [--backend flux|preview]"""
+"""python -m app.cli picture.jpg -o out/ [--template psa|bgs] [--placement template|center]"""
 from __future__ import annotations
 
 import argparse
 import json
-import logging
 from dataclasses import fields
 from pathlib import Path
 
@@ -13,7 +12,7 @@ from .pipeline import Options, run
 
 
 def main() -> None:
-    p = argparse.ArgumentParser(description="Extend a Pokémon card to PSA slab size")
+    p = argparse.ArgumentParser(description="Print sheet and cut line for a finished slab picture")
     p.add_argument("image", type=Path)
     p.add_argument("-o", "--out", type=Path, default=Path("out"))
     defaults = Options()
@@ -26,7 +25,6 @@ def main() -> None:
             p.add_argument(flag, type=type(value), default=value)
     args = p.parse_args()
 
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
     opts = Options(**{f.name: getattr(args, f.name) for f in fields(Options)})
     meta = run(Image.open(args.image), opts, args.out)
     print(json.dumps(meta, indent=2, ensure_ascii=False))

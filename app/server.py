@@ -1,4 +1,4 @@
-"""Web UI + API. One GPU job at a time; the browser polls for the result.
+"""Web UI + API. A job takes a second or two, so the answer comes straight back.
 
 Errors are returned as {"code": ..., **params} and translated by the UI (EN/DE/FR/LB)."""
 from __future__ import annotations
@@ -9,65 +9,27 @@ import os
 import shutil
 import time
 import uuid
-from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from PIL import Image
 
-from . import backends, models
 from .layout import list_layouts, load_layout
-from .pipeline import Options, run
+from .pipeline import CardNotFound, Options, run
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger("extender")
 
 OUT_DIR = Path(os.environ.get("OUTPUT_DIR", "/data/outputs"))
-DEFAULT_BACKEND = os.environ.get("DEFAULT_BACKEND", "flux")
 STATIC = Path(__file__).parent / "static"
-FILES = {"print.png", "print.pdf", "preview.jpg", "raw.png", "mask.png", "card.png", "meta.json",
-         "cut.svg", "cut.dxf", "print-cut.svg"}
+FILES = {"print.png", "print.pdf", "preview.jpg", "meta.json", "cut.dxf", "print-cut.svg"}
 MAX_UPLOAD_BYTES = int(os.environ.get("MAX_UPLOAD_MB", "25")) * 1024 * 1024
 MAX_PIXELS = 40_000_000          # a phone photo is ~12 MP; refuses decompression bombs before decoding
-MAX_PENDING = int(os.environ.get("MAX_PENDING", "5"))
 OUTPUT_TTL = float(os.environ.get("OUTPUT_TTL_HOURS", "72")) * 3600
 Image.MAX_IMAGE_PIXELS = MAX_PIXELS
 
 app = FastAPI(title="Pokemon Extender")
-gpu = ThreadPoolExecutor(max_workers=1)
-jobs: dict[str, dict] = {}
-
-
-# First start: download (6–9 GB), then load into the GPU. Shown in the UI while it happens.
-model_state: dict = {"state": "ready" if DEFAULT_BACKEND == "preview" else "waiting"}
-
-
-def _prepare_model() -> None:
-    try:
-        if not models.is_cached():
-            if not os.environ.get("HF_TOKEN", "").startswith("hf_"):
-                model_state.update(state="error", error={"code": "no_token"})
-                log.error("HF_TOKEN missing: set it in the compose file")
-                return
-            models.fetch_all(lambda i, n, name: model_state.update(state="downloading", part=i, parts=n))
-        model_state.update(state="loading")
-        backends.get_backend(DEFAULT_BACKEND)
-        model_state.update(state="ready")
-    except Exception as e:
-        log.exception("Model preparation failed")
-        model_state.update(state="error", error={"code": "model_failed", "msg": str(e)})
-
-
-@app.on_event("startup")
-def preload() -> None:
-    if os.environ.get("PRELOAD", "1") == "1" and DEFAULT_BACKEND != "preview":
-        gpu.submit(_prepare_model)
-
-
-@app.get("/api/status")
-def status():
-    return model_state
 
 
 @app.get("/")
@@ -77,77 +39,31 @@ def index():
 
 @app.get("/api/config")
 def config():
-    return {
-        "templates": {n: load_layout(n).name for n in list_layouts()},
-        "backends": backends.available(),
-        "default_backend": DEFAULT_BACKEND,
-        "default_template": "psa",
-        "default_prompt": backends.DEFAULT_PROMPT,
-    }
-
-
-def _progress_for(job: dict):
-    def progress(stage: str, step: int = 0, steps: int = 0) -> None:
-        now = time.time()
-        p = job["progress"]
-        if stage == "generating" and step == 0:
-            p["gen_started"] = now
-        p.update(stage=stage, step=step, steps=steps)
-        if stage == "generating" and step > 0 and p.get("gen_started"):
-            p["eta_s"] = round((now - p["gen_started"]) / step * (steps - step))
-    return progress
-
-
-def _work(job_id: str, img: Image.Image, opts: Options) -> None:
-    job = jobs[job_id]
-    job["status"] = "running"
-    job["progress"] = {"stage": "preparing", "step": 0, "steps": 0}
-    if model_state["state"] == "error" and opts.backend == DEFAULT_BACKEND:
-        job.update(status="error", error=model_state["error"], finished=time.time())
-        return
-    try:
-        job["meta"] = run(img, opts, OUT_DIR / job_id, _progress_for(job))
-        jobs[job_id]["status"] = "done"
-    except Exception as e:  # surfaced to the UI
-        log.exception("Job %s failed", job_id)
-        code = "oom" if "out of memory" in str(e).lower() else "job_failed"
-        jobs[job_id].update(status="error", error={"code": code, "msg": str(e)[:300]})
-        backends.free_gpu()
-    jobs[job_id]["finished"] = time.time()
+    return {"templates": {n: load_layout(n).name for n in list_layouts()}, "default_template": "psa"}
 
 
 def _prune() -> None:
-    """Forget finished jobs and delete their files after OUTPUT_TTL."""
+    """Delete results after OUTPUT_TTL."""
     cutoff = time.time() - OUTPUT_TTL
-    for job_id in [k for k, v in jobs.items() if v.get("finished", time.time()) < cutoff]:
-        del jobs[job_id]
     if OUT_DIR.is_dir():
         for d in OUT_DIR.iterdir():
             if d.is_dir() and d.stat().st_mtime < cutoff:
                 shutil.rmtree(d, ignore_errors=True)
 
 
-@app.post("/api/extend")
-async def extend(
+@app.post("/api/cut")
+def cut(
     file: UploadFile = File(...),
     template: str = Form("psa"),
-    backend: str = Form(DEFAULT_BACKEND),
-    prompt: str = Form(""),
-    seed: int = Form(-1),
-    steps: int = Form(12),
-    inset_mm: float = Form(2.5),
-    bleed_mm: float = Form(0.0),
+    placement: str = Form("template"),
+    bleed_mm: float = Form(2.0),
     dpi: int = Form(260),
-    guides: bool = Form(False),
 ):
-    if template not in list_layouts() or backend not in backends.available():
+    if template not in list_layouts() or placement not in ("template", "center"):
         raise HTTPException(400, {"code": "unknown_option"})
-    if not (1 <= steps <= 100 and 72 <= dpi <= 600 and 0 <= bleed_mm <= 10 and 0 <= inset_mm <= 10
-            and -1 <= seed < 2**31 and len(prompt) <= 1000):
+    if not (72 <= dpi <= 600 and 0 <= bleed_mm <= 10):
         raise HTTPException(400, {"code": "out_of_range"})
-    if sum(j["status"] in ("queued", "running") for j in jobs.values()) >= MAX_PENDING:
-        raise HTTPException(429, {"code": "queue_full"})
-    data = await file.read(MAX_UPLOAD_BYTES + 1)
+    data = file.file.read(MAX_UPLOAD_BYTES + 1)
     if len(data) > MAX_UPLOAD_BYTES:
         raise HTTPException(413, {"code": "too_large", "max": MAX_UPLOAD_BYTES // 1024 // 1024})
     try:
@@ -158,23 +74,14 @@ async def extend(
     except Exception:
         raise HTTPException(400, {"code": "not_image"})
     _prune()
-    opts = Options(template=template, backend=backend, prompt=prompt, seed=seed, steps=steps,
-                   inset_mm=inset_mm, bleed_mm=bleed_mm, dpi=dpi, guides=guides)
     job_id = uuid.uuid4().hex[:12]
-    jobs[job_id] = {"status": "queued", "created": time.time()}
-    gpu.submit(_work, job_id, img, opts)
-    return {"id": job_id}
-
-
-@app.get("/api/jobs/{job_id}")
-def job(job_id: str):
-    if job_id not in jobs:
-        raise HTTPException(404)
-    job = jobs[job_id]
-    if job["status"] == "queued":
-        ahead = sum(1 for j in jobs.values() if j["status"] in ("queued", "running") and j["created"] < job["created"])
-        return {**job, "position": ahead, "model": model_state}
-    return job
+    opts = Options(template=template, placement=placement, bleed_mm=bleed_mm, dpi=dpi)
+    try:
+        meta = run(img, opts, OUT_DIR / job_id)
+    except CardNotFound:
+        shutil.rmtree(OUT_DIR / job_id, ignore_errors=True)
+        raise HTTPException(422, {"code": "no_card"})
+    return {"id": job_id, "meta": meta}
 
 
 @app.get("/api/jobs/{job_id}/{name}")

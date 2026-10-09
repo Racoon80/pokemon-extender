@@ -1,11 +1,7 @@
-# Pokemon-Extender — for an NVIDIA GPU with 6 GB VRAM or more
+# Pokemon-Extender — print sheet + cut line for a finished slab picture. No GPU needed.
 # (Unraid with the Compose Manager plugin: use unraid/docker-compose.yml instead.)
 #
-# Needs: Docker + NVIDIA driver + nvidia-container-toolkit
-#   (Windows: Docker Desktop with the WSL2 backend, GPU support is built in)
-# 1. Put your Hugging Face token below (HF_TOKEN).
-# 2. docker compose up -d --build
-# 3. http://localhost:8000 — the first start downloads the AI model (6–9 GB) once; the page shows the progress.
+# docker compose up -d --build, then http://localhost:8000
 services:
   pokemon-extender:
     build: .
@@ -17,21 +13,5 @@ services:
       # This computer only. For your LAN use "8000:8000" — there is no login,
       # so never expose it to the internet (or put a reverse proxy with auth in front).
       - "127.0.0.1:8000:8000"
-    environment:
-      # Hugging Face token (read access) of an account that accepted the FLUX.1 Fill licence:
-      # https://huggingface.co/black-forest-labs/FLUX.1-Fill-dev
-      HF_TOKEN: "hf_PUT_YOUR_TOKEN_HERE"
-      # auto: picks the AI model size for your GPU (8 GB cards work too, a bit slower and softer).
-      FLUX_GGUF_FILE: auto
-      TORCH_DTYPE: auto                # bf16 on RTX 30xx and newer, float32 on older cards
-      CPU_OFFLOAD: auto                # moves parts of the model to RAM when the GPU is too small
     volumes:
-      - ./data:/data                   # AI model, results, own templates (data/templates/*.json)
-    shm_size: 2gb
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
+      - ./data:/data                   # results, own templates (data/templates/*.json)
