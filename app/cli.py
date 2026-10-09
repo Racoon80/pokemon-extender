@@ -1,4 +1,4 @@
-"""python -m app.cli picture.jpg -o out/ [--template psa|bgs] [--placement template|center]"""
+"""python -m app.cli picture.jpg -o out/ [--template psa|bgs]"""
 from __future__ import annotations
 
 import argparse

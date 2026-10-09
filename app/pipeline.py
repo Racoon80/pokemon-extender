@@ -1,8 +1,9 @@
 """Finished picture in -> slab-sized print sheet plus one cut line out.
 
 The picture is already extended (the card sits somewhere inside it). The card is found, its size
-gives the scale (the card is 63 x 88 mm), and the slab outline is placed around it: the card ends
-up exactly where the real card lies in the slab.
+gives the scale (the card is 63 x 88 mm), and the slab outline and label window are placed around it
+from the template: the card ends up exactly where the real card lies in the case, the label window
+where the label sits — never touching the card.
 """
 from __future__ import annotations
 
@@ -25,27 +26,12 @@ MM_PER_INCH = 25.4
 @dataclass
 class Options:
     template: str = "psa"
-    placement: str = "center"     # "center": card centred in the outline; "template": card where the slab holds it
     bleed_mm: float = 2.0
     dpi: int = 260
 
 
 class CardNotFound(Exception):
     pass
-
-
-def _place(layout: Layout, placement: str) -> Layout:
-    """Move the card inside the outline when it is to be centred. The label keeps its place unless
-    it would then reach into the card; then it goes in the middle of the room above the card."""
-    if placement != "center":
-        return layout
-    card, label = layout.card, layout.label
-    x = layout.bleed_mm + (layout.width_mm - card.w) / 2
-    y = layout.bleed_mm + (layout.height_mm - card.h) / 2
-    if label.y + label.h > y:
-        label = Rect(label.x, layout.bleed_mm + (y - layout.bleed_mm - label.h) / 2, label.w, label.h, label.radius)
-    return Layout(layout.name, layout.width_mm, layout.height_mm, layout.corner_radius_mm,
-                  Rect(x, y, card.w, card.h, card.radius), label, layout.white_margin_mm, layout.bleed_mm)
 
 
 def _sheet_to_source(layout: Layout, box, px_per_mm: float) -> np.ndarray:
@@ -90,7 +76,7 @@ def run(img: Image.Image, opts: Options, out_dir: Path) -> dict:
     box = find_card(img)
     if box is None:
         raise CardNotFound
-    layout = _place(load_layout(opts.template).with_bleed(opts.bleed_mm), opts.placement)
+    layout = load_layout(opts.template).with_bleed(opts.bleed_mm)
 
     px_per_mm = opts.dpi / MM_PER_INCH
     pw, ph = round(layout.total_w_mm * px_per_mm), round(layout.total_h_mm * px_per_mm)
@@ -139,7 +125,6 @@ def run(img: Image.Image, opts: Options, out_dir: Path) -> dict:
                     "angle": round(box.angle, 2)},
         "source_dpi": round(box.w / layout.card.w * MM_PER_INCH),
         "missing_mm": short_mm,
-        "label_edge_mm": round(layout.label.y - layout.trim.y, 1),  # strip left between label window and top edge
         "options": asdict(opts), "created": int(time.time()),
     }
     (out_dir / "meta.json").write_text(json.dumps(meta, indent=2, ensure_ascii=False))

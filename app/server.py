@@ -58,18 +58,17 @@ def _prune() -> None:
 def cut(
     file: UploadFile = File(...),
     template: str = Form("psa"),
-    placement: str = Form("center"),
     bleed_mm: float = Form(2.0),
     dpi: int = Form(260),
 ):
-    if template not in list_layouts() or placement not in ("template", "center"):
+    if template not in list_layouts():
         raise HTTPException(400, {"code": "unknown_option"})
     if not (72 <= dpi <= 600 and 0 <= bleed_mm <= 10):
         raise HTTPException(400, {"code": "out_of_range"})
     if not slots.acquire(timeout=30):
         raise HTTPException(429, {"code": "queue_full"})
     try:
-        return _cut(file, Options(template=template, placement=placement, bleed_mm=bleed_mm, dpi=dpi))
+        return _cut(file, Options(template=template, bleed_mm=bleed_mm, dpi=dpi))
     finally:
         slots.release()
 

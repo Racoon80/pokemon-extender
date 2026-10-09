@@ -44,29 +44,28 @@ the internet.
 - Where the picture does not reach the cut line, it is filled with blurred, mirrored background
   and the UI says how many mm were missing on which side.
 
-**Card position**
-| | |
-|---|---|
-| *Centred* (default) | The card sits in the middle of the outline. Fits pictures that have the same amount of background above and below the card. |
-| *Where the slab holds the card* | The card lands where the template puts it (PSA: 35.5 mm from the top, room for the label above). Use this when the real card goes on top of the print. |
+**Card and label position** are fixed by the template, as in the real case: PSA card 35.5 mm from
+the top, label window 5.6 mm from the top, 11.6 mm of picture between them. Leave enough
+background above the card (PSA: about 36 mm at card scale, i.e. 40 % of the card height).
 
 ## How it works
 1. Find the card: the largest card-shaped (63:88) rectangle inside the picture (`app/card.py`),
    slight rotation included.
-2. Scale = card width in pixels / 63 mm. Place the slab outline from `templates/*.json` around it.
+2. Scale = card width in pixels / 63 mm. Place the slab outline and label window from
+   `templates/*.json` around it.
 3. Resample the picture to the sheet at print resolution (`app/pipeline.py`).
 4. Write the sheet and the cut line (`app/cutfile.py`).
 
 ## Slab formats (`templates/*.json`)
 Pick the format in the web UI (or `--template` on the CLI). All values in mm.
 
-| Template | Outer size | Card |
-|---|---|---|
-| `psa` — PSA | 81 × 136 | 63 × 88, 9 from the left, 35.5 from the top |
-| `bgs` — Beckett | 84 × 131 | 63 × 88, 10.5 from the left, 31 from the top |
+| Template | Outer size | Label window | Card |
+|---|---|---|---|
+| `psa` — PSA | 81 × 136 | 68 × 18.3, 5.6 from the top | 63 × 88, 9 from the left, 35.5 from the top |
+| `bgs` — Beckett | 84 × 131 | 63 × 20, 6 from the top | 63 × 88, 10.5 from the left, 31 from the top |
 
 Outer sizes are the most widely quoted figures — neither PSA nor Beckett publishes an official
-spec. Card positions are measured from product photos (PSA) or estimated (BGS):
+spec. Label and card positions are measured from product photos (PSA) or estimated (BGS):
 check them against a real slab. To correct one or add a format, put a `*.json` into
 `templates/` inside the data volume (Unraid: `/mnt/user/appdata/pokemon-extender/templates/`); a
 file there wins over the built-in one with the same name. It is read for every job.
@@ -81,9 +80,7 @@ file there wins over the built-in one with the same name. It is read for every j
 ## Print then cut (Bambu Lab cutting module, other cutters)
 The cut is **one path** with two closed shapes — the slab outline and the label window — in
 millimetres, with the same origin (top left) as the print image. The card is not cut: it is part of
-the picture. With *Centred* the label keeps the template position as long as it stays clear of the
-card (PSA: yes); otherwise it moves to the middle of the room above the card and the UI warns when
-the strip above it gets thinner than 2 mm (BGS).
+the picture.
 
 | File | Use |
 |---|---|
@@ -100,7 +97,7 @@ edge of the picture.
 
 ## CLI
 ```bash
-docker compose exec pokemon-extender python -m app.cli /data/picture.jpg -o /data/out --placement template
+docker compose exec pokemon-extender python -m app.cli /data/picture.jpg -o /data/out
 # locally: pip install -r requirements.txt, then
 python -m app.cli picture.jpg -o out
 ```
