@@ -24,7 +24,7 @@ log = logging.getLogger("extender")
 
 OUT_DIR = Path(os.environ.get("OUTPUT_DIR", "/data/outputs"))
 STATIC = Path(__file__).parent / "static"
-FILES = {"print.png", "print.pdf", "preview.jpg", "meta.json", "cut.dxf", "print-cut.svg"}
+FILES = {"print.png", "print.pdf", "preview.jpg", "meta.json", "cut.dxf", "print-cut.svg", "cutout.png"}
 MAX_UPLOAD_BYTES = int(os.environ.get("MAX_UPLOAD_MB", "25")) * 1024 * 1024
 MAX_PIXELS = 40_000_000          # a phone photo is ~12 MP; refuses decompression bombs before decoding
 MAX_JOBS = int(os.environ.get("MAX_JOBS", "2"))   # pictures processed at once; each can take a few hundred MB

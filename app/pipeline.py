@@ -66,6 +66,19 @@ def _rounded(draw: ImageDraw.ImageDraw, r: Rect, s: float, **kw):
     draw.rounded_rectangle((x0, y0, x1 - 1, y1 - 1), radius=rad, **kw)
 
 
+def _cutout(sheet: Image.Image, layout: Layout, px_per_mm: float) -> Image.Image:
+    """Only the slab, transparent outside its outline: Bambu Suite's Print Then Cut traces the
+    edge of the picture, so this alone gives the one cut. No bleed — the cut is the picture's edge."""
+    x0, y0, x1, y1, _ = layout.trim.to_px(px_per_mm, px_per_mm)
+    out = sheet.crop((x0, y0, x1, y1)).convert("RGBA")
+    k = 4  # supersampled mask for a smooth rounded edge
+    mask = Image.new("L", (out.width * k, out.height * k), 0)
+    r = round(layout.corner_radius_mm * px_per_mm * k)
+    ImageDraw.Draw(mask).rounded_rectangle((0, 0, mask.width - 1, mask.height - 1), radius=r, fill=255)
+    out.putalpha(mask.resize(out.size, Image.LANCZOS))
+    return out
+
+
 def run(img: Image.Image, opts: Options, out_dir: Path) -> dict:
     out_dir.mkdir(parents=True, exist_ok=True)
     img = ImageOps.exif_transpose(img).convert("RGB")
@@ -98,6 +111,10 @@ def run(img: Image.Image, opts: Options, out_dir: Path) -> dict:
     out.save(out_dir / "print.png", dpi=(opts.dpi, opts.dpi))
     out.save(out_dir / "print.pdf", resolution=opts.dpi)
     cutfile.write_all(layout, out_dir)
+    cut_png = _cutout(out, layout, px_per_mm)
+    # dpi from the rounded pixel size, so the Suite imports it at exactly the slab size
+    cut_png.save(out_dir / "cutout.png", dpi=(cut_png.width / layout.width_mm * MM_PER_INCH,
+                                              cut_png.height / layout.height_mm * MM_PER_INCH))
 
     # Preview: the picture with the cut line on top and everything outside it dimmed.
     preview = out.copy()
