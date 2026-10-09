@@ -8,6 +8,7 @@ top-left corner of print.png, so the cut line lands on the printed image without
 from __future__ import annotations
 
 import base64
+import io
 import math
 from pathlib import Path
 
@@ -53,6 +54,21 @@ def write_print_svg(layout: Layout, png: Path, path: Path) -> None:
     image = (f'  <image id="print" x="0" y="0" width="{_f(layout.total_w_mm)}" height="{_f(layout.total_h_mm)}" '
              f'preserveAspectRatio="none" xlink:href="data:image/png;base64,{data}"/>\n')
     path.write_text(_svg(layout, image + _cut_element(layout)))
+
+
+def write_cutout_svg(layout: Layout, cutout, path: Path) -> None:
+    """The slab alone (trim size, no bleed) as a transparent PNG inside an SVG that states its size in
+    mm. Bambu Suite's Print Then Cut traces the picture's edges, so this needs no cut line."""
+    buf = io.BytesIO()
+    cutout.save(buf, "PNG")
+    w, h = layout.width_mm, layout.height_mm
+    data = base64.b64encode(buf.getvalue()).decode()
+    path.write_text(
+        f'<?xml version="1.0" encoding="UTF-8"?>\n'
+        f'<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" '
+        f'width="{_f(w)}mm" height="{_f(h)}mm" viewBox="0 0 {_f(w)} {_f(h)}">\n'
+        f'  <image x="0" y="0" width="{_f(w)}" height="{_f(h)}" preserveAspectRatio="none" '
+        f'xlink:href="data:image/png;base64,{data}"/>\n</svg>\n')
 
 
 def _dxf_polyline(r: Rect, sheet_h: float) -> list[str]:

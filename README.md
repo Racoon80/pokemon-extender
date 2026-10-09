@@ -84,14 +84,14 @@ window — in millimetres, with the same origin (top left) as the print image. T
 
 | File | Use |
 |---|---|
-| `cutout.png` | **Bambu Suite:** only the slab (81 × 136 mm), transparent outside its rounded outline and inside the label and card windows. Import, set to *Print Then Cut*: the Suite traces the edge itself, no cut file needed. No bleed |
+| `cutout.svg` | **Bambu Suite:** only the slab (81 × 136 mm) as a picture, transparent outside its rounded outline and inside the label and card windows, wrapped in an SVG that gives its size in mm (the Suite ignores a PNG's dpi and imports it 2.28× too large). Import, set to *Print Then Cut*: the Suite traces the edge itself, no cut file needed. No bleed |
 | `print-cut.svg` | Print image and cut line in one file, already aligned |
 | `print.pdf` / `print.png` | Print image only, exact size incl. bleed |
 | `cut.dxf` | Cut line only, for software that wants the cut as a separate DXF |
 
 On Bambu Lab printers (H2D/H2S with the cutting module) print-then-cut runs in **Bambu Suite**
 (not Bambu Studio). The Suite makes the cut lines itself from the outline of the picture and they
-cannot be edited by hand, so `cutout.png` is the simplest way in. For other cutters use
+cannot be edited by hand, so `cutout.svg` is the simplest way in. For other cutters use
 `print-cut.svg` or `cut.dxf` and keep the default **2 mm bleed** so the blade never runs along the
 edge of the picture.
 

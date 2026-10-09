@@ -117,10 +117,8 @@ def run(img: Image.Image, opts: Options, out_dir: Path) -> dict:
     out.save(out_dir / "print.png", dpi=(opts.dpi, opts.dpi))
     out.save(out_dir / "print.pdf", resolution=opts.dpi)
     cutfile.write_all(layout, out_dir)
-    cut_png = _cutout(out, layout, px_per_mm)
-    # dpi from the rounded pixel size, so the Suite imports it at exactly the slab size
-    cut_png.save(out_dir / "cutout.png", dpi=(cut_png.width / layout.width_mm * MM_PER_INCH,
-                                              cut_png.height / layout.height_mm * MM_PER_INCH))
+    # Bambu Suite ignores a PNG's dpi (it came in 2.28x too large), but takes an SVG's size in mm.
+    cutfile.write_cutout_svg(layout, _cutout(out, layout, px_per_mm), out_dir / "cutout.svg")
 
     # Preview: the picture with the cut line on top and everything outside it dimmed.
     preview = out.copy()

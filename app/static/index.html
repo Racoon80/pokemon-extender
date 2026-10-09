@@ -74,7 +74,7 @@ const I18N = {
     missing: 'The picture does not reach the cut line ({sides}); that part is filled with blurred background.',
     top: 'top {v} mm', bottom: 'bottom {v} mm', left: 'left {v} mm', right: 'right {v} mm',
     dlPrintCut: 'Print + cut line (SVG)', dlPdf: 'PDF (print)', dlPng: 'PNG (print)', dlCutDxf: 'Cut line only (DXF)',
-    dlCutout: 'Bambu Suite (PNG, transparent)', cutoutHint: 'Bambu Suite: import the transparent PNG and set it to Print Then Cut — the Suite cuts along its edges by itself (outline, label and card windows), no cut file needed ({w} × {h} mm, no bleed).',
+    dlCutout: 'Bambu Suite (SVG)', cutoutHint: 'Bambu Suite: import this SVG and set it to Print Then Cut — it comes in at the right size, and the Suite cuts along its edges by itself (outline, label and card windows), no cut file needed ({w} × {h} mm, no bleed).',
     cutHint: 'Print-then-cut (e.g. Bambu Suite): one file with the picture and the cut line on top of it, already aligned, in mm. One path: the slab outline, the label window and the card window (0.5 mm larger than the card).',
     e_no_card: 'No card found in the picture. The whole card has to be visible, with background around it.',
     e_not_image: 'That is not an image (or it is too large).', e_too_large: 'File too large (max. {max} MB).',
@@ -91,7 +91,7 @@ const I18N = {
     missing: 'Das Bild reicht nicht bis zur Schnittlinie ({sides}); dort wird unscharfer Hintergrund ergänzt.',
     top: 'oben {v} mm', bottom: 'unten {v} mm', left: 'links {v} mm', right: 'rechts {v} mm',
     dlPrintCut: 'Druck + Schnittlinie (SVG)', dlPdf: 'PDF (Druck)', dlPng: 'PNG (Druck)', dlCutDxf: 'Nur Schnittlinie (DXF)',
-    dlCutout: 'Bambu Suite (PNG, transparent)', cutoutHint: 'Bambu Suite: die transparente PNG importieren und auf „Print Then Cut“ stellen — die Suite schneidet selbst an ihren Rändern entlang (Umriss, Label- und Kartenfenster), keine Schnittdatei nötig ({w} × {h} mm, ohne Beschnitt).',
+    dlCutout: 'Bambu Suite (SVG)', cutoutHint: 'Bambu Suite: diese SVG importieren und auf „Print Then Cut“ stellen — die Suite schneidet selbst an ihren Rändern entlang (Umriss, Label- und Kartenfenster), keine Schnittdatei nötig ({w} × {h} mm, ohne Beschnitt).',
     cutHint: 'Drucken-und-Schneiden (z. B. Bambu Suite): eine Datei mit Bild und Schnittlinie darüber, schon ausgerichtet, in mm. Ein Pfad: Slab-Umriss, Label-Fenster und Kartenfenster (0,5 mm größer als die Karte).',
     e_no_card: 'Keine Karte im Bild gefunden. Die ganze Karte muss sichtbar sein, mit Hintergrund drumherum.',
     e_not_image: 'Das ist kein Bild (oder es ist zu groß).', e_too_large: 'Datei zu groß (max. {max} MB).',
@@ -108,7 +108,7 @@ const I18N = {
     missing: "L'image n'atteint pas le trait de coupe ({sides}) ; cette partie est complétée par un fond flou.",
     top: 'haut {v} mm', bottom: 'bas {v} mm', left: 'gauche {v} mm', right: 'droite {v} mm',
     dlPrintCut: 'Impression + coupe (SVG)', dlPdf: 'PDF (impression)', dlPng: 'PNG (impression)', dlCutDxf: 'Coupe seule (DXF)',
-    dlCutout: 'Bambu Suite (PNG transparent)', cutoutHint: 'Bambu Suite : importez le PNG transparent et réglez-le sur « Print Then Cut » — la Suite découpe elle-même le long de ses bords (contour, fenêtres de l’étiquette et de la carte), sans fichier de coupe ({w} × {h} mm, sans fond perdu).',
+    dlCutout: 'Bambu Suite (SVG)', cutoutHint: 'Bambu Suite : importez ce SVG et réglez-le sur « Print Then Cut » — la Suite découpe elle-même le long de ses bords (contour, fenêtres de l’étiquette et de la carte), sans fichier de coupe ({w} × {h} mm, sans fond perdu).',
     cutHint: 'Impression-découpe (p. ex. Bambu Suite) : un seul fichier avec l’image et le trait de coupe par-dessus, déjà alignés, en mm. Un seul tracé : le contour du slab, la fenêtre de l’étiquette et celle de la carte (0,5 mm plus grande que la carte).',
     e_no_card: "Aucune carte trouvée dans l'image. La carte entière doit être visible, avec du fond autour.",
     e_not_image: "Ce n'est pas une image (ou elle est trop grande).", e_too_large: 'Fichier trop volumineux (max. {max} Mo).',
@@ -125,7 +125,7 @@ const I18N = {
     missing: 'D’Bild geet net bis un d’Schneidlinn ({sides}); do gëtt onscharfen Hannergrond ergänzt.',
     top: 'uewen {v} mm', bottom: 'ënnen {v} mm', left: 'lénks {v} mm', right: 'riets {v} mm',
     dlPrintCut: 'Drock + Schneidlinn (SVG)', dlPdf: 'PDF (Drock)', dlPng: 'PNG (Drock)', dlCutDxf: 'Just Schneidlinn (DXF)',
-    dlCutout: 'Bambu Suite (PNG, transparent)', cutoutHint: 'Bambu Suite: déi transparent PNG importéieren an op „Print Then Cut“ setzen — d’Suite schneit selwer laanscht hir Ränner (Ëmrëss, Label- a Kaarte-Fënster), kee Schneid-Fichier néideg ({w} × {h} mm, ouni Beschnëtt).',
+    dlCutout: 'Bambu Suite (SVG)', cutoutHint: 'Bambu Suite: dës SVG importéieren an op „Print Then Cut“ setzen — d’Suite schneit selwer laanscht hir Ränner (Ëmrëss, Label- a Kaarte-Fënster), kee Schneid-Fichier néideg ({w} × {h} mm, ouni Beschnëtt).',
     cutHint: 'Drécken-a-Schneiden (z. B. Bambu Suite): eng Datei mam Bild an der Schneidlinn driwwer, schonn ausgeriicht, a mm. Ee Pfad: Slab-Ëmrëss, Label-Fënster a Kaarte-Fënster (0,5 mm méi grouss wéi d’Kaart).',
     e_no_card: 'Keng Kaart am Bild fonnt. Déi ganz Kaart muss ze gesi sinn, mat Hannergrond ronderëm.',
     e_not_image: 'Dat ass kee Bild (oder et ass ze grouss).', e_too_large: 'Fichier ze grouss (max. {max} MB).',
@@ -205,7 +205,7 @@ function show(id, m) {
     </div>
     ${warn}
     <div class="dl">
-      <a class="cut" href="${u('cutout.png')}" download>${t('dlCutout')}</a>
+      <a class="cut" href="${u('cutout.svg')}" download>${t('dlCutout')}</a>
       <a class="cut" href="${u('print-cut.svg')}" download>${t('dlPrintCut')}</a>
       <a href="${u('print.pdf')}" download>${t('dlPdf')}</a>
       <a href="${u('print.png')}" download>${t('dlPng')}</a>
