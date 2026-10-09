@@ -7,6 +7,7 @@ import io
 import logging
 import os
 import shutil
+import threading
 import time
 import uuid
 from pathlib import Path
@@ -26,10 +27,12 @@ STATIC = Path(__file__).parent / "static"
 FILES = {"print.png", "print.pdf", "preview.jpg", "meta.json", "cut.dxf", "print-cut.svg"}
 MAX_UPLOAD_BYTES = int(os.environ.get("MAX_UPLOAD_MB", "25")) * 1024 * 1024
 MAX_PIXELS = 40_000_000          # a phone photo is ~12 MP; refuses decompression bombs before decoding
+MAX_JOBS = int(os.environ.get("MAX_JOBS", "2"))   # pictures processed at once; each can take a few hundred MB
 OUTPUT_TTL = float(os.environ.get("OUTPUT_TTL_HOURS", "72")) * 3600
 Image.MAX_IMAGE_PIXELS = MAX_PIXELS
 
 app = FastAPI(title="Pokemon Extender")
+slots = threading.BoundedSemaphore(MAX_JOBS)
 
 
 @app.get("/")
@@ -63,6 +66,15 @@ def cut(
         raise HTTPException(400, {"code": "unknown_option"})
     if not (72 <= dpi <= 600 and 0 <= bleed_mm <= 10):
         raise HTTPException(400, {"code": "out_of_range"})
+    if not slots.acquire(timeout=30):
+        raise HTTPException(429, {"code": "queue_full"})
+    try:
+        return _cut(file, Options(template=template, placement=placement, bleed_mm=bleed_mm, dpi=dpi))
+    finally:
+        slots.release()
+
+
+def _cut(file: UploadFile, opts: Options) -> dict:
     data = file.file.read(MAX_UPLOAD_BYTES + 1)
     if len(data) > MAX_UPLOAD_BYTES:
         raise HTTPException(413, {"code": "too_large", "max": MAX_UPLOAD_BYTES // 1024 // 1024})
@@ -75,7 +87,6 @@ def cut(
         raise HTTPException(400, {"code": "not_image"})
     _prune()
     job_id = uuid.uuid4().hex[:12]
-    opts = Options(template=template, placement=placement, bleed_mm=bleed_mm, dpi=dpi)
     try:
         meta = run(img, opts, OUT_DIR / job_id)
     except CardNotFound:

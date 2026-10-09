@@ -68,6 +68,7 @@ file there wins over the built-in one with the same name. It is read for every j
 | Variable | |
 |---|---|
 | `MAX_UPLOAD_MB` | Upload limit (25 MB) |
+| `MAX_JOBS` | Pictures processed at the same time (2); more wait up to 30 s, then get *busy* |
 | `OUTPUT_TTL_HOURS` | Results are deleted after 72 h |
 
 ## Print then cut (Bambu Lab cutting module, other cutters)
