@@ -35,14 +35,17 @@ class CardNotFound(Exception):
 
 
 def _place(layout: Layout, placement: str) -> Layout:
-    """Move the card inside the outline when it is to be centred."""
+    """Move the card inside the outline when it is to be centred. The label keeps its place unless
+    it would then reach into the card; then it goes in the middle of the room above the card."""
     if placement != "center":
         return layout
-    card = layout.card
+    card, label = layout.card, layout.label
     x = layout.bleed_mm + (layout.width_mm - card.w) / 2
     y = layout.bleed_mm + (layout.height_mm - card.h) / 2
+    if label.y + label.h > y:
+        label = Rect(label.x, layout.bleed_mm + (y - layout.bleed_mm - label.h) / 2, label.w, label.h, label.radius)
     return Layout(layout.name, layout.width_mm, layout.height_mm, layout.corner_radius_mm,
-                  Rect(x, y, card.w, card.h, card.radius), layout.label, layout.white_margin_mm, layout.bleed_mm)
+                  Rect(x, y, card.w, card.h, card.radius), label, layout.white_margin_mm, layout.bleed_mm)
 
 
 def _sheet_to_source(layout: Layout, box, px_per_mm: float) -> np.ndarray:
@@ -67,14 +70,16 @@ def _rounded(draw: ImageDraw.ImageDraw, r: Rect, s: float, **kw):
 
 
 def _cutout(sheet: Image.Image, layout: Layout, px_per_mm: float) -> Image.Image:
-    """Only the slab, transparent outside its outline: Bambu Suite's Print Then Cut traces the
-    edge of the picture, so this alone gives the one cut. No bleed — the cut is the picture's edge."""
+    """Only the slab, transparent outside its outline and inside the label window: Bambu Suite's
+    Print Then Cut traces the edges of the picture, so this alone gives the cuts. No bleed."""
     x0, y0, x1, y1, _ = layout.trim.to_px(px_per_mm, px_per_mm)
     out = sheet.crop((x0, y0, x1, y1)).convert("RGBA")
     k = 4  # supersampled mask for a smooth rounded edge
     mask = Image.new("L", (out.width * k, out.height * k), 0)
     r = round(layout.corner_radius_mm * px_per_mm * k)
-    ImageDraw.Draw(mask).rounded_rectangle((0, 0, mask.width - 1, mask.height - 1), radius=r, fill=255)
+    draw = ImageDraw.Draw(mask)
+    draw.rounded_rectangle((0, 0, mask.width - 1, mask.height - 1), radius=r, fill=255)
+    _rounded(draw, layout.label.shift(-layout.trim.x, -layout.trim.y), px_per_mm * k, fill=0)
     out.putalpha(mask.resize(out.size, Image.LANCZOS))
     return out
 
@@ -120,9 +125,11 @@ def run(img: Image.Image, opts: Options, out_dir: Path) -> dict:
     preview = out.copy()
     shade = Image.new("L", out.size, 150)
     _rounded(ImageDraw.Draw(shade), layout.trim, px_per_mm, fill=0)
+    _rounded(ImageDraw.Draw(shade), layout.label, px_per_mm, fill=150)
     preview.paste(Image.new("RGB", out.size, (255, 255, 255)), (0, 0), shade)
-    _rounded(ImageDraw.Draw(preview), layout.trim, px_per_mm, outline=(230, 0, 0),
-             width=max(2, round(0.3 * px_per_mm)))
+    pd = ImageDraw.Draw(preview)
+    for r in cutfile.cut_rects(layout):
+        _rounded(pd, r, px_per_mm, outline=(230, 0, 0), width=max(2, round(0.3 * px_per_mm)))
     preview.save(out_dir / "preview.jpg", quality=92)
 
     meta = {
@@ -131,7 +138,9 @@ def run(img: Image.Image, opts: Options, out_dir: Path) -> dict:
         "card_px": {"cx": round(box.cx, 1), "cy": round(box.cy, 1), "w": round(box.w, 1), "h": round(box.h, 1),
                     "angle": round(box.angle, 2)},
         "source_dpi": round(box.w / layout.card.w * MM_PER_INCH),
-        "missing_mm": short_mm, "options": asdict(opts), "created": int(time.time()),
+        "missing_mm": short_mm,
+        "label_edge_mm": round(layout.label.y - layout.trim.y, 1),  # strip left between label window and top edge
+        "options": asdict(opts), "created": int(time.time()),
     }
     (out_dir / "meta.json").write_text(json.dumps(meta, indent=2, ensure_ascii=False))
     return meta

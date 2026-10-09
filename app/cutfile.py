@@ -1,5 +1,6 @@
-"""The cut line for print-then-cut (Bambu Suite and other cutters), in millimetres: one closed path,
-the slab outline. Nothing else is cut.
+"""The cut line for print-then-cut (Bambu Suite and other cutters), in millimetres: the slab outline
+and the label window, together as one path (one object to import, not several). The card is not cut:
+it is part of the picture.
 
 Every file uses the full sheet (bleed included) as its coordinate system with the origin in the
 top-left corner of print.png, so the cut line lands on the printed image without manual alignment.
@@ -37,8 +38,13 @@ def _svg(layout: Layout, body: str) -> str:
             f'width="{_f(w)}mm" height="{_f(h)}mm" viewBox="0 0 {_f(w)} {_f(h)}">\n{body}</svg>\n')
 
 
+def cut_rects(layout: Layout) -> list[Rect]:
+    return [layout.trim, layout.label]
+
+
 def _cut_element(layout: Layout) -> str:
-    return f'  <path id="cut" d="{_svg_path(layout.trim)}" fill="none" stroke="{STROKE}" stroke-width="0.1"/>\n'
+    d = " ".join(_svg_path(r) for r in cut_rects(layout))
+    return f'  <path id="cut" d="{d}" fill="none" stroke="{STROKE}" stroke-width="0.1"/>\n'
 
 
 def write_print_svg(layout: Layout, png: Path, path: Path) -> None:
@@ -69,12 +75,13 @@ def _dxf_polyline(r: Rect, sheet_h: float) -> list[str]:
 
 
 def write_dxf(layout: Layout, path: Path) -> None:
-    """DXF R12, units mm, one closed polyline."""
+    """DXF R12, units mm, one closed polyline per cut, all on layer CUT."""
     h = layout.total_h_mm
     out = ["0", "SECTION", "2", "HEADER", "9", "$ACADVER", "1", "AC1009", "9", "$INSUNITS", "70", "4",
            "9", "$EXTMIN", "10", "0", "20", "0", "9", "$EXTMAX", "10", _f(layout.total_w_mm), "20", _f(h),
            "0", "ENDSEC", "0", "SECTION", "2", "ENTITIES"]
-    out += _dxf_polyline(layout.trim, h)
+    for r in cut_rects(layout):
+        out += _dxf_polyline(r, h)
     out += ["0", "ENDSEC", "0", "EOF"]
     path.write_text("\n".join(out) + "\n")
 
