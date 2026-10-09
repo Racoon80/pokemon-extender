@@ -40,8 +40,8 @@ the internet.
 **Card position**
 | | |
 |---|---|
-| *Where the slab holds the card* (default) | The card lands where the template puts it (PSA: 35.5 mm from the top, room for the label above). Use this when the real card goes on top of the print. |
-| *Centred* | The card sits in the middle of the outline. Fits pictures that have the same amount of background above and below the card. |
+| *Centred* (default) | The card sits in the middle of the outline. Fits pictures that have the same amount of background above and below the card. |
+| *Where the slab holds the card* | The card lands where the template puts it (PSA: 35.5 mm from the top, room for the label above). Use this when the real card goes on top of the print. |
 
 ## How it works
 1. Find the card: the largest card-shaped (63:88) rectangle inside the picture (`app/card.py`),
@@ -86,7 +86,7 @@ Keep the default **2 mm bleed** so the blade never runs along the edge of the pi
 
 ## CLI
 ```bash
-docker compose exec pokemon-extender python -m app.cli /data/picture.jpg -o /data/out --placement center
+docker compose exec pokemon-extender python -m app.cli /data/picture.jpg -o /data/out --placement template
 # locally: pip install -r requirements.txt, then
 python -m app.cli picture.jpg -o out
 ```

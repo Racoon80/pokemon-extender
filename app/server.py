@@ -58,7 +58,7 @@ def _prune() -> None:
 def cut(
     file: UploadFile = File(...),
     template: str = Form("psa"),
-    placement: str = Form("template"),
+    placement: str = Form("center"),
     bleed_mm: float = Form(2.0),
     dpi: int = Form(260),
 ):

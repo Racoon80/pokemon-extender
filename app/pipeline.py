@@ -25,7 +25,7 @@ MM_PER_INCH = 25.4
 @dataclass
 class Options:
     template: str = "psa"
-    placement: str = "template"   # "template": card where the slab holds it; "center": card centred in the outline
+    placement: str = "center"     # "center": card centred in the outline; "template": card where the slab holds it
     bleed_mm: float = 2.0
     dpi: int = 260
 
