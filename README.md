@@ -50,6 +50,9 @@ For a PSA slab the sheet is **81 × 136 mm**. Three closed shapes are cut, all i
 
 - The **whole card** is visible, upright, with background around it on every side. A slight tilt
   is straightened.
+- A **bare card** (a scan or shop picture, edge to edge, no background) works too: the whole
+  picture is taken as the card and everything around it is blurred background. It looks better
+  with a real extended picture.
 - Leave **enough room above the card** for the label: with PSA about 40 % of the card's height.
   What is missing is filled with blurred background, and the page tells you how many mm on which side.
 - **Resolution:** at 260 dpi the card needs about 650 × 900 px. Below 200 dpi the page warns that

@@ -35,11 +35,15 @@ def _candidates(gray: np.ndarray):
         yield from contours
 
 
+FULL_FRAME_TOLERANCE = 0.04
+
+
 def find_card(img: Image.Image) -> CardBox | None:
     """Largest card-shaped rectangle that lies inside the picture, or None.
 
-    The card has to be clearly smaller than the picture: a picture that only shows the card has
-    nothing around it to print."""
+    A picture that is only the card (a scan or a shop photo, edge to edge) has no edge around the
+    card to find; if the whole picture has a card's proportions it is taken as the card, and the
+    pipeline fills the surroundings with blurred background."""
     rgb = np.asarray(img.convert("RGB"))
     h, w = rgb.shape[:2]
     gray = cv2.GaussianBlur(cv2.cvtColor(rgb, cv2.COLOR_RGB2GRAY), (5, 5), 0)
@@ -58,4 +62,6 @@ def find_card(img: Image.Image) -> CardBox | None:
         angle = (angle + 45) % 90 - 45
         if best is None or area > best.w * best.h:
             best = CardBox(cx, cy, rw, rh, angle)
+    if best is None and w < h and abs(w / h - CARD_ASPECT) <= FULL_FRAME_TOLERANCE:
+        return CardBox(w / 2, h / 2, w, h, 0.0)
     return best
